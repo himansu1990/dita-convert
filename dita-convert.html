@@ -81,6 +81,7 @@ button:hover {
 <br>
 <button onclick="convertDITA()">Convert</button>
 <button onclick="downloadPDF()">Download as PDF</button>
+<button onclick="downloadHTML()">Download as HTML</button>
 
 <div id="output" class="output-container" style="margin-top:20px;"></div>
 
@@ -127,13 +128,12 @@ function transformDITA(xmlDoc) {
     // Skip the first title when passing children
     let children = Array.from(root.children);
     if (children.length && children[0].tagName === "title") {
-        children.shift(); // remove first title to prevent duplication
+        children.shift();
     }
 
     html += parseDITAChildren(children, 2); // Start from h2
     return html;
 }
-
 
 function parseDITAChildren(children, headingLevel) {
     let html = "";
@@ -161,7 +161,7 @@ function parseDITAChildren(children, headingLevel) {
                 html += `<li>${child.textContent}</li>`;
                 break;
             case "section":
-                html += parseDITAChildren(child.children, headingLevel); // Title inside will adjust
+                html += parseDITAChildren(child.children, headingLevel);
                 break;
             case "table":
                 html += "<table>" + parseDITAChildren(child.children, headingLevel) + "</table>";
@@ -197,7 +197,6 @@ function downloadPDF() {
         alert("Please convert a file first.");
         return;
     }
-
     const element = document.getElementById("output");
     const opt = {
         margin: [10, 20, 10, 20],
@@ -206,8 +205,19 @@ function downloadPDF() {
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-
     html2pdf().set(opt).from(element).save();
+}
+
+function downloadHTML() {
+    if (!renderedHTML) {
+        alert("Please convert a file first.");
+        return;
+    }
+    const blob = new Blob([renderedHTML], { type: "text/html" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = currentFileName + ".html";
+    link.click();
 }
 </script>
 
