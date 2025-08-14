@@ -1,94 +1,103 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DITA to HTML/PDF Converter</title>
-
-<!-- html2pdf library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        max-width: 900px;
-        margin: auto;
-    }
-
-    h1 {
-        font-size: 2em;
-    }
-
-    /* Print/PDF-specific styles */
-    @media print {
-        body {
-            font-size: 12px;
-        }
-        h1 {
-            font-size: 18px;
-        }
-    }
-</style>
-</head>
-<body>
-
-<h1>DITA to HTML/PDF Converter</h1>
-
-<input type="file" id="fileInput" accept=".xml">
-<button id="downloadHTML">Download HTML</button>
-<button id="downloadPDF">Download PDF</button>
-
-<div id="output" style="margin-top:20px; border:1px solid #ccc; padding:10px;">
-    <em>Your converted content will appear here...</em>
-</div>
-
 <script>
-document.getElementById('fileInput').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+let renderedHTML = "";
+let originalFileName = ""; // Store uploaded file name
+
+function convertDITA() {
+    const fileInput = document.getElementById('ditaFile');
+    if (!fileInput.files.length) {
+        alert("Please select a DITA XML file first.");
+        return;
+    }
+
+    // Store the file name without extension
+    originalFileName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+        const xmlDoc = parser.parseFromString(e.target.result, "application/xml");
 
-        // Simple XML to HTML conversion (modify for your DITA)
-        let htmlContent = "<h1>" + xmlDoc.getElementsByTagName("title")[0]?.textContent + "</h1>";
-        const sections = xmlDoc.getElementsByTagName("p");
-        for (let i = 0; i < sections.length; i++) {
-            htmlContent += "<p>" + sections[i].textContent + "</p>";
+        // Check for parse errors
+        if (xmlDoc.getElementsByTagName("parsererror").length) {
+            alert("Invalid XML file.");
+            return;
         }
 
-        document.getElementById('output').innerHTML = htmlContent;
-
-        // Store filename for later
-        document.getElementById('output').dataset.filename = file.name.replace(/\.[^/.]+$/, "");
+        // Convert XML to styled HTML
+        renderedHTML = transformDITA(xmlDoc);
+        document.getElementById("output").innerHTML = renderedHTML;
     };
-    reader.readAsText(file);
-});
+    reader.readAsText(fileInput.files[0]);
+}
 
-document.getElementById('downloadHTML').addEventListener('click', function() {
-    const content = document.getElementById('output').innerHTML;
-    const blob = new Blob([content], { type: 'text/html' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = (document.getElementById('output').dataset.filename || 'output') + ".html";
-    link.click();
-});
+function transformDITA(xmlDoc) {
+    let html = "";
 
-document.getElementById('downloadPDF').addEventListener('click', function() {
-    const element = document.getElementById('output');
-    const filename = (element.dataset.filename || 'output') + ".pdf";
+    // Title
+    const title = xmlDoc.getElementsByTagName("title")[0];
+    if (title) {
+        html += `<h1>${title.textContent}</h1>`;
+    }
 
-    html2pdf().set({
-        margin: 10,
-        filename: filename,
-        html2canvas: { scale: 1.5 }, // lower scale → smaller text
+    // Body content
+    const bodyContent = xmlDoc.getElementsByTagName("body")[0];
+    if (bodyContent) {
+        html += parseDITAChildren(bodyContent.children);
+    } else {
+        html += parseDITAChildren(xmlDoc.documentElement.children);
+    }
+
+    return html;
+}
+
+function parseDITAChildren(children) {
+    let html = "";
+    for (let child of children) {
+        switch (child.tagName) {
+            case "p":
+                html += `<p>${child.textContent}</p>`;
+                break;
+            case "note":
+                html += `<note>${child.textContent}</note>`;
+                break;
+            case "codeblock":
+                html += `<codeblock>${child.textContent}</codeblock>`;
+                break;
+            case "ul":
+                html += "<ul>" + parseDITAChildren(child.children) + "</ul>";
+                break;
+            case "ol":
+                html += "<ol>" + parseDITAChildren(child.children) + "</ol>";
+                break;
+            case "li":
+                html += `<li>${child.textContent}</li>`;
+                break;
+            case "section":
+                html += `<h2>${child.getElementsByTagName("title")[0]?.textContent || ""}</h2>`;
+                html += parseDITAChildren(child.children);
+                break;
+            default:
+                html += parseDITAChildren(child.children);
+        }
+    }
+    return html;
+}
+
+function downloadPDF() {
+    if (!renderedHTML) {
+        alert("Please convert a file first.");
+        return;
+    }
+
+    const element = document.getElementById("output");
+    const opt = {
+        margin: [10, 20, 10, 20],
+        filename: `${originalFileName}.pdf`, // ✅ Use original file name
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(element).save();
-});
-</script>
+    };
 
-</body>
-</html>
+    html2pdf().set(opt).from(element).save();
+}
+</script>
