@@ -1,379 +1,271 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DITA XML → HTML & PDF Converter</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DITA XML → HTML & PDF (Simple)</title>
   <style>
-    :root{
-      --bg:#0b1020; --panel:#121936; --muted:#6b7db3; --text:#e8ecff; --accent:#7aa2ff; --border:#223066;
-    }
+    :root{--bg:#0e1325;--panel:#141b36;--text:#e8ecff;--muted:#9aa6d1;--border:#28346b}
     *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:linear-gradient(180deg,#0b1020,#0e1430);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
-    .app{display:grid;grid-template-columns:360px 1fr;gap:16px;height:100vh;padding:16px}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
-    .left{display:flex;flex-direction:column;gap:12px;padding:16px}
-    h1{font-size:18px;margin:0 0 6px}
-    .muted{color:var(--muted)}
-    .drop{border:1.5px dashed var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center;background:#0e1534}
-    .drop.drag{border-color:var(--accent);background:#0f1a45}
-    .drop input{display:none}
-    .btn{appearance:none;border:1px solid var(--border);background:#0e1636;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
-    .btn:hover{border-color:var(--accent)}
-    .btn.primary{background:linear-gradient(180deg,#1a2b6c,#1a2e80);border-color:#2a47a6}
-    .btnbar{display:flex;gap:10px;flex-wrap:wrap}
-    .row{display:flex;gap:8px;align-items:center}
-    .grow{flex:1}
-    textarea, select{width:100%;background:#0c1430;color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px;font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
-    .right{display:grid;grid-template-rows:auto 1fr}
-    .toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
-    iframe#preview{width:100%;height:100%;border:0;border-bottom-left-radius:16px;border-bottom-right-radius:16px}
-    .badge{font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted)}
-    .notice{font-size:12px;color:var(--muted)}
-    @media (max-width: 900px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}}
-    /* Print styles for generated HTML inside preview are injected separately */
+    body{margin:0;background:linear-gradient(180deg,#0e1325,#0a1022);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+    header.card{padding:14px 16px}
+    h1{font-size:18px;margin:0}
+    .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .btn{appearance:none;border:1px solid var(--border);background:#0f1736;color:var(--text);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+    .btn.primary{background:#1a2c75;border-color:#2b46a8}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .badge{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted)}
+    .notice{font-size:12px;color:var(--muted);padding:0 16px 12px}
+    .preview{height:72vh;border-top-left-radius:14px;border-top-right-radius:14px;overflow:hidden}
+    iframe{width:100%;height:100%;border:0}
+    input[type=file]{display:none}
+    label.file{border:1px dashed var(--border);padding:10px 14px;border-radius:10px;cursor:pointer}
   </style>
   <!-- html2pdf for PDF export -->
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-  <div class="app">
-    <section class="left card">
-      <header>
-        <h1>DITA XML → HTML & PDF</h1>
-        <div class="notice">Client‑side tool: your files never leave the browser.</div>
-      </header>
+  <header class="card">
+    <h1>DITA XML → HTML & PDF (Simple)</h1>
+  </header>
 
-      <div class="drop" id="dropZone">
-        <div>
-          <strong>Drop a DITA <code>.xml</code> or <code>.dita</code> file</strong>
-        </div>
-        <div class="muted">or</div>
-        <div>
-          <label class="btn" for="xmlFile">Choose file…</label>
-          <input type="file" id="xmlFile" accept=".xml,.dita,.ditamap,.map,.ditaval" />
-        </div>
-        <div class="notice">Optional: drop a <em>DITA map</em> (basic support) or images referenced with relative paths.</div>
-      </div>
-
-      <details>
-        <summary class="btn">Advanced: Customize XSLT (optional)</summary>
-        <div style="margin-top:10px">
-          <div class="row">
-            <select id="xsltPreset" class="grow">
-              <option value="basic" selected>Built‑in: Basic DITA Topic/Map → HTML</option>
-              <option value="minimal">Built‑in: Minimal (title + paragraphs)</option>
-              <option value="custom">Paste your own XSLT</option>
-            </select>
-            <button class="btn" id="applyXslt">Apply</button>
-          </div>
-          <textarea id="xsltText" rows="12" style="margin-top:8px"></textarea>
-          <div class="notice">Tip: Use <code>href</code> on <code>&lt;xref&gt;</code> and <code>&lt;image&gt;</code> as you would in DITA. This template handles common elements.</div>
-        </div>
-      </details>
-
-      <div class="btnbar">
-        <button class="btn primary" id="btnToHtml" disabled>Generate HTML</button>
+  <div class="wrap">
+    <section class="card">
+      <div class="controls">
+        <label class="file" for="xmlFile">Choose DITA .xml / .dita</label>
+        <input id="xmlFile" type="file" accept=".xml,.dita" />
+        <button class="btn primary" id="btnHtml" disabled>Generate HTML</button>
         <button class="btn" id="btnDownloadHtml" disabled>Download HTML</button>
-        <button class="btn" id="btnToPdf" disabled>Download PDF</button>
+        <button class="btn" id="btnPdf" disabled>Download PDF</button>
         <span class="badge" id="status">Idle</span>
       </div>
-
-      <div class="notice">
-        Limitations: This lightweight XSLT covers common DITA structures (topic, map, title, shortdesc, section, p, ul/ol, li, codeblock, table, xref, image, fig). For production‑grade output with numbering, keys, conrefs, profiling, etc., use DITA‑OT. This tool is ideal for quick previews and shareable PDFs.
-      </div>
+      <p class="notice">Client‑side only. Good for quick previews. For production (keys, conrefs, profiling, numbering), use DITA‑OT.</p>
     </section>
 
-    <section class="right card">
-      <div class="toolbar">
-        <div>Preview</div>
-        <div class="row">
-          <button class="btn" id="btnPrint" disabled>Print…</button>
-        </div>
-      </div>
+    <section class="card preview">
       <iframe id="preview" title="Preview"></iframe>
     </section>
   </div>
 
-  <template id="defaultXsltBasic">
-    <![CDATA[
-      <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-        <xsl:output method="html" encoding="UTF-8" indent="yes"/>
+  <!-- Store XSLT safely inside <script type="text/xsl"> so GitHub Pages doesn't strip content -->
+  <script type="text/xsl" id="xslt-basic">
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <xsl:output method="html" encoding="UTF-8" indent="yes"/>
+  <xsl:template match="/">
+    <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <title><xsl:value-of select="//title[1]"/></title>
+        <style>
+          body{font-family:system-ui,Segoe UI,Roboto,Inter,Arial;line-height:1.6;color:#111;margin:0}
+          .page{max-width:920px;margin:0 auto;padding:28px}
+          h1,h2,h3{line-height:1.25}
+          h1{font-size:2rem;margin:.2em 0 .6em}
+          h2{font-size:1.5rem;margin:1.2em 0 .3em}
+          h3{font-size:1.2rem;margin:1em 0 .25em}
+          p{margin:.5em 0}
+          .shortdesc{color:#333;background:#f6f8ff;border-left:4px solid #8aa2ff;padding:.75em 1em;border-radius:6px}
+          pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
+          pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto}
+          table{border-collapse:collapse;margin:12px 0;width:100%}
+          th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
+          figure{margin:1em 0;text-align:center}
+          figcaption{font-size:.9em;color:#555}
+          @media print{.page{padding:0} a{color:#000;text-decoration:none}}
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <xsl:apply-templates select="/*"/>
+        </div>
+      </body>
+    </html>
+  </xsl:template>
 
-        <xsl:template match="/">
-          <html>
-            <head>
-              <meta charset="UTF-8"/>
-              <title>
-                <xsl:apply-templates select="//title[1]"/>
-              </title>
-              <style>
-                body{font-family:system-ui,Segoe UI,Roboto,Inter,Arial;line-height:1.6;color:#111;margin:0}
-                .page{max-width:900px;margin:0 auto;padding:32px}
-                h1,h2,h3,h4{line-height:1.25}
-                h1{font-size:2rem;margin:.2em 0 .6em}
-                h2{font-size:1.5rem;margin:1.2em 0 .3em}
-                h3{font-size:1.2rem;margin:1em 0 .25em}
-                p{margin:.5em 0}
-                .shortdesc{color:#333;background:#f4f6ff;border-left:4px solid #8aa2ff;padding:.75em 1em;border-radius:6px}
-                pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
-                pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto}
-                table{border-collapse:collapse;margin:12px 0;width:100%}
-                th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
-                figure{margin:1em 0;text-align:center}
-                figcaption{font-size:.9em;color:#555}
-                .toc{border:1px solid #ddd;border-radius:8px;padding:.75em;background:#fafafa}
-                @media print{.page{padding:0} a{color:#000;text-decoration:none}}
-              </style>
-            </head>
-            <body>
-              <div class="page">
-                <xsl:apply-templates select="/*"/>
-              </div>
-            </body>
-          </html>
-        </xsl:template>
+  <!-- Topic-like roots -->
+  <xsl:template match="topic | task | concept | reference">
+    <article>
+      <h1><xsl:value-of select="title"/></h1>
+      <xsl:if test="shortdesc"><p class="shortdesc"><xsl:apply-templates select="shortdesc/node()"/></p></xsl:if>
+      <xsl:apply-templates select="body | taskbody | refbody"/>
+    </article>
+  </xsl:template>
 
-        <!-- Topic root -->
-        <xsl:template match="topic | task | concept | reference">
-          <article>
-            <h1><xsl:value-of select="title"/></h1>
-            <xsl:if test="shortdesc"><p class="shortdesc"><xsl:apply-templates select="shortdesc/node()"/></p></xsl:if>
-            <xsl:apply-templates select="prolog"/>
-            <xsl:apply-templates select="body | taskbody | refbody"/>
-          </article>
-        </xsl:template>
+  <!-- Minimal map support: render a simple TOC of hrefs/navtitles -->
+  <xsl:template match="map">
+    <section>
+      <h1><xsl:value-of select="title"/></h1>
+      <ul>
+        <xsl:for-each select="topicref">
+          <li>
+            <xsl:choose>
+              <xsl:when test="@navtitle"><xsl:value-of select="@navtitle"/></xsl:when>
+              <xsl:when test="@href"><a href="{@href}"><xsl:value-of select="@href"/></a></xsl:when>
+              <xsl:otherwise><em>Topic</em></xsl:otherwise>
+            </xsl:choose>
+          </li>
+        </xsl:for-each>
+      </ul>
+    </section>
+  </xsl:template>
 
-        <!-- Map root (very basic) -->
-        <xsl:template match="map">
-          <section>
-            <h1><xsl:value-of select="title"/></h1>
-            <div class="toc">
-              <strong>Contents</strong>
-              <ul>
-                <xsl:for-each select="topicref">
-                  <li>
-                    <xsl:choose>
-                      <xsl:when test="@navtitle"><xsl:value-of select="@navtitle"/></xsl:when>
-                      <xsl:when test="@href"><a href="{@href}"><xsl:value-of select="@href"/></a></xsl:when>
-                      <xsl:otherwise><em>Topic</em></xsl:otherwise>
-                    </xsl:choose>
-                  </li>
-                </xsl:for-each>
-              </ul>
-            </div>
-          </section>
-        </xsl:template>
+  <!-- Common blocks -->
+  <xsl:template match="section">
+    <section>
+      <h2><xsl:value-of select="title"/></h2>
+      <xsl:apply-templates/>
+    </section>
+  </xsl:template>
+  <xsl:template match="p"><p><xsl:apply-templates/></p></xsl:template>
+  <xsl:template match="ul"><ul><xsl:apply-templates/></ul></xsl:template>
+  <xsl:template match="ol"><ol><xsl:apply-templates/></ol></xsl:template>
+  <xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
+  <xsl:template match="codeblock"><pre><xsl:apply-templates/></pre></xsl:template>
+  <xsl:template match="codeph"><code><xsl:apply-templates/></code></xsl:template>
+  <xsl:template match="b"><strong><xsl:apply-templates/></strong></xsl:template>
+  <xsl:template match="i"><em><xsl:apply-templates/></em></xsl:template>
 
-        <!-- Common blocks -->
-        <xsl:template match="section">
-          <section>
-            <xsl:if test="@id"><a name="{@id}"></a></xsl:if>
-            <h2><xsl:value-of select="title"/></h2>
-            <xsl:apply-templates/>
-          </section>
-        </xsl:template>
+  <!-- Links & images -->
+  <xsl:template match="xref | link">
+    <xsl:choose>
+      <xsl:when test="@href"><a href="{@href}"><xsl:apply-templates/></a></xsl:when>
+      <xsl:otherwise><xsl:apply-templates/></xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  <xsl:template match="image"><img src="{@href}" alt="{(@alt|@alt)[1]}"/></xsl:template>
+  <xsl:template match="fig">
+    <figure>
+      <xsl:apply-templates select="image"/>
+      <figcaption><xsl:value-of select="title"/></figcaption>
+    </figure>
+  </xsl:template>
 
-        <xsl:template match="p"><p><xsl:apply-templates/></p></xsl:template>
-        <xsl:template match="ul"><ul><xsl:apply-templates/></ul></xsl:template>
-        <xsl:template match="ol"><ol><xsl:apply-templates/></ol></xsl:template>
-        <xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
-        <xsl:template match="codeblock"><pre><xsl:apply-templates/></pre></xsl:template>
-        <xsl:template match="codeph"><code><xsl:apply-templates/></code></xsl:template>
-        <xsl:template match="b"> <strong><xsl:apply-templates/></strong> </xsl:template>
-        <xsl:template match="i"> <em><xsl:apply-templates/></em> </xsl:template>
+  <!-- Tables (DITA's CALS-like) -->
+  <xsl:template match="table"><table><xsl:apply-templates/></table></xsl:template>
+  <xsl:template match="tgroup"><xsl:apply-templates/></xsl:template>
+  <xsl:template match="thead"><thead><xsl:apply-templates/></thead></xsl:template>
+  <xsl:template match="tbody"><tbody><xsl:apply-templates/></tbody></xsl:template>
+  <xsl:template match="row"><tr><xsl:apply-templates/></tr></xsl:template>
+  <xsl:template match="entry"><td><xsl:apply-templates/></td></xsl:template>
 
-        <!-- xref/link -->
-        <xsl:template match="xref | link">
-          <xsl:choose>
-            <xsl:when test="@href"><a href="{@href}"><xsl:apply-templates/></a></xsl:when>
-            <xsl:otherwise><xsl:apply-templates/></xsl:otherwise>
-          </xsl:choose>
-        </xsl:template>
-
-        <!-- image/fig -->
-        <xsl:template match="image">
-          <img src="{@href}" alt="{(@alt|@alt)[1]}"/>
-        </xsl:template>
-        <xsl:template match="fig">
-          <figure>
-            <xsl:apply-templates select="image"/>
-            <figcaption><xsl:value-of select="title"/></figcaption>
-          </figure>
-        </xsl:template>
-
-        <!-- tables -->
-        <xsl:template match="table">
-          <table>
-            <xsl:apply-templates/>
-          </table>
-        </xsl:template>
-        <xsl:template match="tgroup"><xsl:apply-templates/></xsl:template>
-        <xsl:template match="thead"><thead><xsl:apply-templates/></thead></xsl:template>
-        <xsl:template match="tbody"><tbody><xsl:apply-templates/></tbody></xsl:template>
-        <xsl:template match="row"><tr><xsl:apply-templates/></tr></xsl:template>
-        <xsl:template match="entry"><td><xsl:apply-templates/></td></xsl:template>
-
-        <!-- default: copy text -->
-        <xsl:template match="text()|@*"><xsl:value-of select="."/></xsl:template>
-      </xsl:stylesheet>
-    ]]>
-  </template>
-
-  <template id="defaultXsltMinimal">
-    <![CDATA[
-      <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-        <xsl:output method="html" encoding="UTF-8" indent="yes"/>
-        <xsl:template match="/">
-          <html><head><meta charset='utf-8'/><title><xsl:value-of select='//title[1]'/></title></head>
-          <body style="font:16px system-ui;max-width:760px;margin:2rem auto;padding:0 1rem">
-            <h1><xsl:value-of select='//title[1]'/></h1>
-            <xsl:apply-templates select='//p'/>
-          </body></html>
-        </xsl:template>
-        <xsl:template match='p'><p><xsl:apply-templates/></p></xsl:template>
-        <xsl:template match='text()|@*'><xsl:value-of select='.'/></xsl:template>
-      </xsl:stylesheet>
-    ]]>
-  </template>
+  <!-- Default: copy text -->
+  <xsl:template match="text()|@*"><xsl:value-of select="."/></xsl:template>
+</xsl:stylesheet>
+  </script>
 
   <script>
-    const state = { xmlDoc:null, htmlDoc:null, xsltDoc:null };
+    (function(){
+      const fileInput = document.getElementById('xmlFile');
+      const btnHtml = document.getElementById('btnHtml');
+      const btnDownloadHtml = document.getElementById('btnDownloadHtml');
+      const btnPdf = document.getElementById('btnPdf');
+      const status = document.getElementById('status');
+      const preview = document.getElementById('preview');
 
-    const drop = document.getElementById('dropZone');
-    const fileInput = document.getElementById('xmlFile');
-    const xsltText = document.getElementById('xsltText');
-    const xsltPreset = document.getElementById('xsltPreset');
-    const applyXsltBtn = document.getElementById('applyXslt');
-    const statusBadge = document.getElementById('status');
+      let xmlDoc = null; // Parsed XML DOM
+      let htmlDoc = null; // Transformed HTML DOM
+      let xsltDoc = null; // Parsed XSLT DOM
 
-    const btnToHtml = document.getElementById('btnToHtml');
-    const btnDownloadHtml = document.getElementById('btnDownloadHtml');
-    const btnToPdf = document.getElementById('btnToPdf');
-    const btnPrint = document.getElementById('btnPrint');
-    const preview = document.getElementById('preview');
+      function setStatus(msg){ status.textContent = msg; }
 
-    // Load default XSLT
-    function setXsltFromPreset(){
-      const tpl = xsltPreset.value === 'minimal' ? document.getElementById('defaultXsltMinimal') : document.getElementById('defaultXsltBasic');
-      xsltText.value = tpl.textContent.trim();
-      parseXslt(xsltText.value);
-    }
-
-    function parseXml(text){
-      const p = new DOMParser();
-      const doc = p.parseFromString(text, 'application/xml');
-      const err = doc.querySelector('parsererror');
-      if(err) throw new Error('XML parse error: ' + err.textContent.replace(/\n/g,' '));
-      return doc;
-    }
-    function parseXslt(text){
-      try{
-        state.xsltDoc = parseXml(text);
-        setStatus('XSLT ready');
-      }catch(e){
-        console.error(e); setStatus('XSLT error');
+      function parseXml(text){
+        const p = new DOMParser();
+        const doc = p.parseFromString(text, 'application/xml');
+        const err = doc.querySelector('parsererror');
+        if(err){ throw new Error(err.textContent.replace(/\n/g,' ')); }
+        return doc;
       }
-    }
 
-    function setStatus(msg){ statusBadge.textContent = msg; }
-
-    function enableActions(enable){
-      btnToHtml.disabled = !enable;
-      btnDownloadHtml.disabled = true;
-      btnToPdf.disabled = true;
-      btnPrint.disabled = true;
-    }
-
-    async function handleFiles(files){
-      if(!files || !files.length) return;
-      const file = files[0];
-      const text = await file.text();
-      try{
-        state.xmlDoc = parseXml(text);
-        enableActions(true);
-        setStatus('XML loaded: ' + file.name);
-      }catch(e){
-        console.error(e); setStatus('Failed to parse XML');
+      function loadXslt(){
+        if(xsltDoc) return xsltDoc;
+        const raw = document.getElementById('xslt-basic').textContent;
+        xsltDoc = parseXml(raw);
+        return xsltDoc;
       }
-    }
 
-    // Drag & drop
-    drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('drag'); });
-    drop.addEventListener('dragleave', e=>{ drop.classList.remove('drag'); });
-    drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
-    fileInput.addEventListener('change', e=> handleFiles(e.target.files));
+      // Handle file selection
+      fileInput.addEventListener('change', async (e)=>{
+        const f = e.target.files && e.target.files[0];
+        if(!f){ return; }
+        try{
+          const text = await f.text();
+          xmlDoc = parseXml(text);
+          setStatus('XML loaded: ' + f.name);
+          btnHtml.disabled = false;
+          btnDownloadHtml.disabled = true;
+          btnPdf.disabled = true;
+        }catch(err){
+          console.error(err);
+          setStatus('Failed to parse XML');
+          btnHtml.disabled = true;
+          btnDownloadHtml.disabled = true;
+          btnPdf.disabled = true;
+        }
+      });
 
-    // XSLT preset handling
-    xsltPreset.addEventListener('change', setXsltFromPreset);
-    applyXsltBtn.addEventListener('click', ()=> parseXslt(xsltText.value));
+      // Transform to HTML
+      btnHtml.addEventListener('click', ()=>{
+        if(!xmlDoc){ return; }
+        try{
+          const proc = new XSLTProcessor();
+          proc.importStylesheet(loadXslt());
+          const doc = proc.transformToDocument(xmlDoc);
+          // Ensure reasonable print margins
+          const style = doc.createElement('style');
+          style.textContent = '@page{margin:16mm}';
+          doc.documentElement.querySelector('head')?.appendChild(style);
+          htmlDoc = doc;
+          const html = new XMLSerializer().serializeToString(doc);
+          const blob = new Blob([html], {type:'text/html'});
+          const url = URL.createObjectURL(blob);
+          preview.src = url;
+          btnDownloadHtml.disabled = false;
+          btnPdf.disabled = false;
+          setStatus('HTML generated');
+        }catch(err){
+          console.error(err); setStatus('Transform error');
+        }
+      });
 
-    // Transform to HTML
-    btnToHtml.addEventListener('click', ()=>{
-      try{
-        const proc = new XSLTProcessor();
-        proc.importStylesheet(state.xsltDoc);
-        const resultDoc = proc.transformToDocument(state.xmlDoc);
-        // Inject a small print stylesheet to ensure nice PDFs
-        const style = resultDoc.createElement('style');
-        style.textContent = `@page{margin:16mm} body{counter-reset: h2} h2{break-after:avoid}`;
-        resultDoc.documentElement.querySelector('head')?.appendChild(style);
-        state.htmlDoc = resultDoc;
-        const html = new XMLSerializer().serializeToString(resultDoc);
+      // Download HTML
+      btnDownloadHtml.addEventListener('click', ()=>{
+        if(!htmlDoc) return;
+        const html = new XMLSerializer().serializeToString(htmlDoc);
         const blob = new Blob([html], {type:'text/html'});
-        const url = URL.createObjectURL(blob);
-        preview.src = url;
-        btnDownloadHtml.disabled = false;
-        btnToPdf.disabled = false;
-        btnPrint.disabled = false;
-        setStatus('HTML generated');
-      }catch(e){ console.error(e); setStatus('Transform error'); }
-    });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'output.html';
+        a.click();
+      });
 
-    // Download HTML
-    btnDownloadHtml.addEventListener('click', ()=>{
-      if(!state.htmlDoc) return;
-      const html = new XMLSerializer().serializeToString(state.htmlDoc);
-      const blob = new Blob([html], {type:'text/html'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'output.html';
-      a.click();
-    });
+      // Download PDF via html2pdf
+      btnPdf.addEventListener('click', async ()=>{
+        if(!htmlDoc) return;
+        setStatus('Rendering PDF…');
+        // Render hidden content
+        const temp = document.createElement('div');
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.innerHTML = new XMLSerializer().serializeToString(htmlDoc);
+        try{
+          await html2pdf().from(temp).set({
+            margin: 10,
+            filename: 'output.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          }).save();
+          setStatus('PDF downloaded');
+        }catch(err){ console.error(err); setStatus('PDF failed'); }
+        finally{ document.body.removeChild(temp); }
+      });
 
-    // PDF via html2pdf
-    btnToPdf.addEventListener('click', async ()=>{
-      if(!state.htmlDoc) return;
-      setStatus('Rendering PDF…');
-      // Render the current preview content into a container for html2pdf
-      const temp = document.createElement('div');
-      temp.style.position = 'fixed';
-      temp.style.left = '-9999px';
-      document.body.appendChild(temp);
-      temp.innerHTML = new XMLSerializer().serializeToString(state.htmlDoc);
-      try{
-        await html2pdf().from(temp).set({
-          margin: 10,
-          filename: 'output.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).save();
-        setStatus('PDF downloaded');
-      }catch(e){ console.error(e); setStatus('PDF failed'); }
-      finally{ document.body.removeChild(temp); }
-    });
-
-    // Print
-    btnPrint.addEventListener('click', ()=>{
-      if(!preview.contentWindow) return;
-      preview.contentWindow.focus();
-      preview.contentWindow.print();
-    });
-
-    // Init
-    setXsltFromPreset();
+      // Ready
+      setStatus('Idle');
+    })();
   </script>
 </body>
 </html>
