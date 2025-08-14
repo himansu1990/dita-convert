@@ -2,129 +2,143 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DITA to HTML/PDF Converter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Highlight.js Oxygen-like theme -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Highlight.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-  h1, h2, h3, h4 { font-weight: bold; }
-  table { border-collapse: collapse; width: 100%; margin: 15px 0; }
-  table, th, td { border: 1px solid #ccc; padding: 8px; }
-  img { max-width: 100%; height: auto; }
-  .note {
-    border-left: 5px solid #ff9800;
-    background: #fff3e0;
-    padding: 10px;
-    margin: 15px 0;
-  }
+body {
+    background: #f8f9fa;
+    font-family: Arial, sans-serif;
+}
+.container {
+    max-width: 900px;
+}
+#output {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+pre code {
+    padding: 1rem;
+    display: block;
+    border-radius: 6px;
+}
+h1, h2, h3 {
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 0.3rem;
+}
+.note {
+    background: #fff3cd;
+    border-left: 5px solid #ffc107;
+    padding: 1rem;
+    margin: 1rem 0;
+}
 </style>
 </head>
 <body>
 
-<h2>DITA to HTML/PDF Converter</h2>
-<input type="file" id="ditaFile" accept=".dita,.xml"><br><br>
-<button id="convertBtn">Convert to HTML</button>
-<button id="downloadPdfBtn" style="display:none;">Download PDF</button>
+<div class="container text-center mt-5">
+    <h1 class="mb-4">DITA to HTML/PDF Converter</h1>
+    <div class="card shadow p-4">
+        <input type="file" id="fileInput" class="form-control mb-3" accept=".xml">
+        <button class="btn btn-primary me-2" id="convertBtn">Convert</button>
+        <button class="btn btn-success me-2" id="downloadPdfBtn" disabled>Download PDF</button>
+        <button class="btn btn-info" id="downloadHtmlBtn" disabled>Download HTML</button>
+    </div>
 
-<div id="output" style="margin-top:20px; border:1px solid #ccc; padding:10px;"></div>
+    <div id="output" class="text-start mt-4"></div>
+</div>
 
-<!-- Dependencies -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <script>
-document.getElementById("convertBtn").addEventListener("click", function () {
-    const fileInput = document.getElementById("ditaFile");
-    if (!fileInput.files.length) {
-        alert("Please select a DITA/XML file first.");
-        return;
-    }
-
-    const file = fileInput.files[0];
-    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+document.getElementById('convertBtn').addEventListener('click', function () {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) return alert('Please select a DITA XML file.');
 
     const reader = new FileReader();
     reader.onload = function (e) {
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+        const xml = parser.parseFromString(e.target.result, 'text/xml');
+        const htmlContent = ditaToHtml(xml);
 
-        let htmlContent = "";
-
-        function processNode(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                return node.nodeValue.trim();
-            }
-            if (node.nodeType !== Node.ELEMENT_NODE) return "";
-
-            switch (node.nodeName) {
-                case "title":
-                    return `<h2>${node.textContent}</h2>`;
-                case "section":
-                    return `<section>${Array.from(node.childNodes).map(processNode).join("")}</section>`;
-                case "p":
-                    return `<p>${Array.from(node.childNodes).map(processNode).join("")}</p>`;
-                case "note":
-                    return `<div class="note">${Array.from(node.childNodes).map(processNode).join("")}</div>`;
-                case "ul":
-                    return `<ul>${Array.from(node.childNodes).map(processNode).join("")}</ul>`;
-                case "ol":
-                    return `<ol>${Array.from(node.childNodes).map(processNode).join("")}</ol>`;
-                case "li":
-                    return `<li>${Array.from(node.childNodes).map(processNode).join("")}</li>`;
-                case "table":
-                    return `<table>${Array.from(node.childNodes).map(processNode).join("")}</table>`;
-                case "thead":
-                    return `<thead>${Array.from(node.childNodes).map(processNode).join("")}</thead>`;
-                case "tbody":
-                    return `<tbody>${Array.from(node.childNodes).map(processNode).join("")}</tbody>`;
-                case "tr":
-                    return `<tr>${Array.from(node.childNodes).map(processNode).join("")}</tr>`;
-                case "th":
-                    return `<th>${node.textContent}</th>`;
-                case "td":
-                    return `<td>${Array.from(node.childNodes).map(processNode).join("")}</td>`;
-                case "image":
-                case "img":
-                    const href = node.getAttribute("href") || node.getAttribute("src");
-                    return href ? `<img src="${href}" alt="">` : "";
-                case "codeblock":
-                case "code":
-                case "pre":
-                    return `<pre><code>${node.textContent}</code></pre>`;
-                default:
-                    return Array.from(node.childNodes).map(processNode).join("");
-            }
-        }
-
-        const topic = xmlDoc.documentElement;
-        htmlContent = processNode(topic);
-
-        const outputDiv = document.getElementById("output");
-        outputDiv.innerHTML = htmlContent;
-
-        // Apply syntax highlighting
-        outputDiv.querySelectorAll("pre code").forEach((block) => {
-            hljs.highlightElement(block);
-        });
-
-        document.getElementById("downloadPdfBtn").style.display = "inline-block";
-
-        document.getElementById("downloadPdfBtn").onclick = function () {
-            const opt = {
-                margin: 0.5,
-                filename: fileNameWithoutExt + ".pdf",
-                image: { type: "jpeg", quality: 0.98 },
-                html2canvas: { scale: 1 },
-                jsPDF: { unit: "in", format: "a4", orientation: "portrait" }
-            };
-            html2pdf().from(outputDiv).set(opt).save();
-        };
+        document.getElementById('output').innerHTML = htmlContent;
+        hljs.highlightAll();
+        document.getElementById('downloadPdfBtn').disabled = false;
+        document.getElementById('downloadHtmlBtn').disabled = false;
     };
     reader.readAsText(file);
 });
+
+function ditaToHtml(xmlDoc) {
+    let html = '';
+    const title = xmlDoc.querySelector('title');
+    if (title) html += `<h1>${title.textContent}</h1>`;
+
+    xmlDoc.querySelectorAll('p').forEach(p => {
+        html += `<p>${p.textContent}</p>`;
+    });
+
+    xmlDoc.querySelectorAll('note').forEach(note => {
+        html += `<div class="note">${note.textContent}</div>`;
+    });
+
+    xmlDoc.querySelectorAll('codeblock').forEach(code => {
+        const lang = code.getAttribute('outputclass') || '';
+        html += `<pre><code class="${lang}">${code.textContent}</code></pre>`;
+    });
+
+    xmlDoc.querySelectorAll('table').forEach(table => {
+        html += '<table class="table table-bordered">';
+        table.querySelectorAll('row').forEach(row => {
+            html += '<tr>';
+            row.querySelectorAll('entry').forEach(cell => {
+                html += `<td>${cell.textContent}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</table>';
+    });
+
+    xmlDoc.querySelectorAll('image').forEach(img => {
+        const src = img.getAttribute('href');
+        if (src) html += `<img src="${src}" alt="" class="img-fluid my-3">`;
+    });
+
+    return html;
+}
+
+document.getElementById('downloadPdfBtn').addEventListener('click', async function () {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'pt', 'a4');
+    const outputElement = document.getElementById('output');
+    const canvas = await html2canvas(outputElement, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = doc.getImageProperties(imgData);
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    doc.save('dita_output.pdf');
+});
+
+document.getElementById('downloadHtmlBtn').addEventListener('click', function () {
+    const htmlContent = document.getElementById('output').outerHTML;
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    saveAs(blob, 'dita_output.html');
+});
 </script>
+
 </body>
 </html>
