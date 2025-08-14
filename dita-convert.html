@@ -1,34 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DITA XML → HTML & PDF (Simple)</title>
-  <style>
-    :root{--bg:#0e1325;--panel:#141b36;--text:#e8ecff;--muted:#9aa6d1;--border:#28346b}
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#0e1325,#0a1022);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
-    .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:12px}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
-    header.card{padding:14px 16px}
-    h1{font-size:18px;margin:0}
-    .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .btn{appearance:none;border:1px solid var(--border);background:#0f1736;color:var(--text);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
-    .btn.primary{background:#1a2c75;border-color:#2b46a8}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .badge{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted)}
-    .notice{font-size:12px;color:var(--muted);padding:0 16px 12px}
-    .preview{height:72vh;border-top-left-radius:14px;border-top-right-radius:14px;overflow:hidden}
-    iframe{width:100%;height:100%;border:0}
-    input[type=file]{display:none}
-    label.file{border:1px dashed var(--border);padding:10px 14px;border-radius:10px;cursor:pointer}
-  </style>
-  <!-- html2pdf for PDF export -->
-  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DITA → HTML & PDF (GitHub‑safe, with Images)</title>
+<style>
+  :root{--bg:#0e1325;--panel:#141b36;--text:#e8ecff;--muted:#9aa6d1;--border:#28346b}
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0e1325,#0a1022);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:12px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  header.card{padding:14px 16px}
+  h1{font-size:18px;margin:0}
+  .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .btn{appearance:none;border:1px solid var(--border);background:#0f1736;color:var(--text);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+  .btn.primary{background:#1a2c75;border-color:#2b46a8}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .badge{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted)}
+  .notice{font-size:12px;color:var(--muted);padding:0 16px 12px}
+  .preview{height:74vh;border-top-left-radius:14px;border-top-right-radius:14px;overflow:auto;background:#fff}
+  #preview{width:100%;height:100%;padding:20px;color:#111}
+  input[type=file]{display:none}
+  label.file{border:1px dashed var(--border);padding:10px 14px;border-radius:10px;cursor:pointer}
+  .spacer{flex:1}
+</style>
+<!-- html2pdf.js -->
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <header class="card">
-    <h1>DITA XML → HTML & PDF (Simple)</h1>
+    <h1>DITA → HTML & PDF (Simple • GitHub‑safe • Images supported)</h1>
   </header>
 
   <div class="wrap">
@@ -36,20 +37,26 @@
       <div class="controls">
         <label class="file" for="xmlFile">Choose DITA .xml / .dita</label>
         <input id="xmlFile" type="file" accept=".xml,.dita" />
+
+        <label class="file" for="assetFiles">Add images/assets (optional)</label>
+        <input id="assetFiles" type="file" accept="image/*,.svg" multiple />
+        <span class="badge" id="assetCount">0 assets</span>
+
+        <span class="spacer"></span>
         <button class="btn primary" id="btnHtml" disabled>Generate HTML</button>
         <button class="btn" id="btnDownloadHtml" disabled>Download HTML</button>
         <button class="btn" id="btnPdf" disabled>Download PDF</button>
         <span class="badge" id="status">Idle</span>
       </div>
-      <p class="notice">Client‑side only. Good for quick previews. For production (keys, conrefs, profiling, numbering), use DITA‑OT.</p>
+      <p class="notice">Client‑side only. Images you add here will be embedded as data URLs, so they render in preview, downloaded HTML, and PDF. For production features (keys, conrefs, profiling), use DITA‑OT.</p>
     </section>
 
     <section class="card preview">
-      <iframe id="preview" title="Preview"></iframe>
+      <div id="preview" title="Preview"></div>
     </section>
   </div>
 
-  <!-- Store XSLT safely inside <script type="text/xsl"> so GitHub Pages doesn't strip content -->
+  <!-- XSLT stored in a script tag so GitHub Pages preserves it verbatim -->
   <script type="text/xsl" id="xslt-basic">
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output method="html" encoding="UTF-8" indent="yes"/>
@@ -60,7 +67,7 @@
         <title><xsl:value-of select="//title[1]"/></title>
         <style>
           body{font-family:system-ui,Segoe UI,Roboto,Inter,Arial;line-height:1.6;color:#111;margin:0}
-          .page{max-width:920px;margin:0 auto;padding:28px}
+          .page{max-width:920px;margin:0 auto;padding:10px 0}
           h1,h2,h3{line-height:1.25}
           h1{font-size:2rem;margin:.2em 0 .6em}
           h2{font-size:1.5rem;margin:1.2em 0 .3em}
@@ -73,6 +80,7 @@
           th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
           figure{margin:1em 0;text-align:center}
           figcaption{font-size:.9em;color:#555}
+          img{max-width:100%;height:auto}
           @media print{.page{padding:0} a{color:#000;text-decoration:none}}
         </style>
       </head>
@@ -93,7 +101,7 @@
     </article>
   </xsl:template>
 
-  <!-- Minimal map support: render a simple TOC of hrefs/navtitles -->
+  <!-- Minimal map support -->
   <xsl:template match="map">
     <section>
       <h1><xsl:value-of select="title"/></h1>
@@ -142,7 +150,7 @@
     </figure>
   </xsl:template>
 
-  <!-- Tables (DITA's CALS-like) -->
+  <!-- Tables (CALS-like) -->
   <xsl:template match="table"><table><xsl:apply-templates/></table></xsl:template>
   <xsl:template match="tgroup"><xsl:apply-templates/></xsl:template>
   <xsl:template match="thead"><thead><xsl:apply-templates/></thead></xsl:template>
@@ -158,6 +166,8 @@
   <script>
     (function(){
       const fileInput = document.getElementById('xmlFile');
+      const assetInput = document.getElementById('assetFiles');
+      const assetCount = document.getElementById('assetCount');
       const btnHtml = document.getElementById('btnHtml');
       const btnDownloadHtml = document.getElementById('btnDownloadHtml');
       const btnPdf = document.getElementById('btnPdf');
@@ -165,8 +175,12 @@
       const preview = document.getElementById('preview');
 
       let xmlDoc = null; // Parsed XML DOM
-      let htmlDoc = null; // Transformed HTML DOM
+      let htmlFragment = ''; // Serialized HTML inside <body>
       let xsltDoc = null; // Parsed XSLT DOM
+      let baseName = 'output';
+
+      // filename (lowercased) -> dataURL
+      const assetMap = new Map();
 
       function setStatus(msg){ status.textContent = msg; }
 
@@ -174,7 +188,8 @@
         const p = new DOMParser();
         const doc = p.parseFromString(text, 'application/xml');
         const err = doc.querySelector('parsererror');
-        if(err){ throw new Error(err.textContent.replace(/\n/g,' ')); }
+        if(err){ throw new Error(err.textContent.replace(/
+/g,' ')); }
         return doc;
       }
 
@@ -185,11 +200,50 @@
         return xsltDoc;
       }
 
-      // Handle file selection
+      async function buildAssetMap(files){
+        if(!files || !files.length) return;
+        const tasks = Array.from(files).map(file=> new Promise((resolve,reject)=>{
+          const reader = new FileReader();
+          reader.onload = ()=>{
+            const key = file.name.toLowerCase();
+            assetMap.set(key, reader.result);
+            resolve();
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        }));
+        await Promise.all(tasks);
+        assetCount.textContent = assetMap.size + ' assets';
+      }
+
+      function rewriteImages(container){
+        const imgs = container.querySelectorAll('img');
+        imgs.forEach(img=>{
+          try{
+            const src = img.getAttribute('src') || '';
+            const parts = src.split('/');
+            const file = decodeURIComponent(parts[parts.length-1]).toLowerCase();
+            if(assetMap.has(file)){
+              img.setAttribute('src', assetMap.get(file));
+            }
+            img.setAttribute('crossorigin','anonymous');
+            img.referrerPolicy = 'no-referrer';
+          }catch(e){/* ignore per-image errors */}
+        });
+      }
+
+      // Handle asset selection
+      assetInput.addEventListener('change', async (e)=>{
+        await buildAssetMap(e.target.files);
+        setStatus('Assets loaded');
+      });
+
+      // Handle XML selection
       fileInput.addEventListener('change', async (e)=>{
         const f = e.target.files && e.target.files[0];
         if(!f){ return; }
         try{
+          baseName = f.name.replace(/\.[^/.]+$/, '') || 'output';
           const text = await f.text();
           xmlDoc = parseXml(text);
           setStatus('XML loaded: ' + f.name);
@@ -205,22 +259,24 @@
         }
       });
 
-      // Transform to HTML
+      // Transform to HTML fragment and render
       btnHtml.addEventListener('click', ()=>{
         if(!xmlDoc){ return; }
         try{
           const proc = new XSLTProcessor();
           proc.importStylesheet(loadXslt());
           const doc = proc.transformToDocument(xmlDoc);
-          // Ensure reasonable print margins
-          const style = doc.createElement('style');
-          style.textContent = '@page{margin:16mm}';
-          doc.documentElement.querySelector('head')?.appendChild(style);
-          htmlDoc = doc;
-          const html = new XMLSerializer().serializeToString(doc);
-          const blob = new Blob([html], {type:'text/html'});
-          const url = URL.createObjectURL(blob);
-          preview.src = url;
+          const body = doc.querySelector('body');
+          const content = body ? body.innerHTML : new XMLSerializer().serializeToString(doc);
+
+          // Place into preview container
+          preview.innerHTML = content;
+          // Rewrite images to embedded data URLs if provided
+          rewriteImages(preview);
+
+          // Save fragment for downloads
+          htmlFragment = preview.innerHTML;
+
           btnDownloadHtml.disabled = false;
           btnPdf.disabled = false;
           setStatus('HTML generated');
@@ -229,41 +285,38 @@
         }
       });
 
-      // Download HTML
+      // Download HTML (self-contained with data URLs)
       btnDownloadHtml.addEventListener('click', ()=>{
-        if(!htmlDoc) return;
-        const html = new XMLSerializer().serializeToString(htmlDoc);
-        const blob = new Blob([html], {type:'text/html'});
+        if(!htmlFragment) return;
+        const shell = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${baseName}</title></head><body>${htmlFragment}</body></html>`;
+        const blob = new Blob([shell], {type:'text/html'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'output.html';
+        a.download = baseName + '.html';
         a.click();
       });
 
       // Download PDF via html2pdf
       btnPdf.addEventListener('click', async ()=>{
-        if(!htmlDoc) return;
+        if(!htmlFragment) return;
         setStatus('Rendering PDF…');
-        // Render hidden content
-        const temp = document.createElement('div');
-        temp.style.position = 'fixed';
-        temp.style.left = '-9999px';
-        document.body.appendChild(temp);
-        temp.innerHTML = new XMLSerializer().serializeToString(htmlDoc);
-        try{
-          await html2pdf().from(temp).set({
-            margin: 10,
-            filename: 'output.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-          }).save();
-          setStatus('PDF downloaded');
-        }catch(err){ console.error(err); setStatus('PDF failed'); }
-        finally{ document.body.removeChild(temp); }
+        // Ensure images are loaded before capture
+        const imgs = Array.from(preview.querySelectorAll('img'));
+        await Promise.all(imgs.map(img=> img.complete ? Promise.resolve() : new Promise(res=>{ img.onload=img.onerror=()=>res(); })));
+        // small delay to settle layout
+        setTimeout(async ()=>{
+          try{
+            await html2pdf().from(preview).set({
+              filename: baseName + '.pdf',
+              html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).save();
+            setStatus('PDF downloaded');
+          }catch(err){ console.error(err); setStatus('PDF failed'); }
+        }, 150);
       });
 
-      // Ready
+      // Init
       setStatus('Idle');
     })();
   </script>
