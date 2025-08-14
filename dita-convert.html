@@ -118,15 +118,22 @@ function transformDITA(xmlDoc) {
     let html = "";
     const root = xmlDoc.documentElement;
 
-    // Top-level title
+    // Extract and render top-level title
     const title = root.getElementsByTagName("title")[0];
     if (title && root.tagName === "topic") {
         html += `<h1>${title.textContent}</h1>`;
     }
 
-    html += parseDITAChildren(root.children, 2); // Start heading level at h2 for sections
+    // Skip the first title when passing children
+    let children = Array.from(root.children);
+    if (children.length && children[0].tagName === "title") {
+        children.shift(); // remove first title to prevent duplication
+    }
+
+    html += parseDITAChildren(children, 2); // Start from h2
     return html;
 }
+
 
 function parseDITAChildren(children, headingLevel) {
     let html = "";
