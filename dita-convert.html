@@ -2,191 +2,213 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DITA Converter with Sidebar</title>
+<title>Enhanced DITA XML Converter</title>
 <style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        display: flex;
-        height: 100vh;
-    }
-
-    /* Sidebar styling */
-    #sidebar {
-        width: 250px;
-        background: #2f3542;
-        color: white;
-        overflow-y: auto;
-        transition: width 0.3s;
-    }
-    #sidebar.collapsed {
-        width: 0;
-        overflow: hidden;
-    }
-    #sidebar h2 {
-        padding: 15px;
-        margin: 0;
-        background: #1e272e;
-        font-size: 16px;
-    }
-    #navList {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-    #navList li {
-        padding: 10px 20px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    #navList li:hover {
-        background: #57606f;
-    }
-
-    /* Main content */
-    #content {
-        flex: 1;
-        padding: 20px;
-        overflow-y: auto;
-    }
-
-    /* Toggle button */
-    #toggleSidebar {
-        position: absolute;
-        top: 10px;
-        left: 260px;
-        background: #2f3542;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        cursor: pointer;
-        z-index: 1000;
-    }
-    #sidebar.collapsed + #toggleSidebar {
-        left: 10px;
-    }
-
-    /* Headings style */
-    h1, h2, h3 {
-        margin-top: 30px;
-    }
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f7f7f7;
+}
+h1, h2, h3, h4, h5 {
+    color: #333;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 4px;
+}
+p {
+    line-height: 1.6;
+    color: #444;
+}
+.note {
+    display: block;
+    background: #fff8d1;
+    border-left: 6px solid #f4c430;
+    padding: 10px;
+    margin: 10px 0;
+    font-style: italic;
+}
+.codeblock, pre {
+    display: block;
+    background: #272822;
+    color: #f8f8f2;
+    padding: 10px;
+    overflow-x: auto;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+table {
+    border-collapse: collapse;
+    margin: 15px 0;
+    width: 100%;
+    background: white;
+}
+table, th, td {
+    border: 1px solid #ccc;
+}
+th, td {
+    padding: 8px 12px;
+    text-align: left;
+}
+img {
+    max-width: 100%;
+    margin: 10px 0;
+}
+button {
+    margin-top: 10px;
+    padding: 10px 15px;
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+button:hover {
+    background: #45a049;
+}
+.output-container {
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
 </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <h2>Contents</h2>
-    <ul id="navList"></ul>
-</div>
+<h1>Enhanced DITA XML to HTML & PDF Converter</h1>
+<input type="file" id="ditaFile" accept=".xml,.dita">
+<br>
+<button onclick="convertDITA()">Convert</button>
+<button onclick="downloadPDF()">Download as PDF</button>
 
-<button id="toggleSidebar">☰</button>
+<div id="output" class="output-container" style="margin-top:20px;"></div>
 
-<div id="content">
-    <input type="file" id="fileInput"><br><br>
-    <button id="downloadHTML">Download HTML</button>
-    <button id="downloadPDF">Download PDF</button>
-    <hr>
-    <div id="output"></div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 <script>
-document.getElementById('fileInput').addEventListener('change', function (e) {
-    const file = e.target.files[0];
-    if (!file) return;
+let renderedHTML = "";
+let currentFileName = "dita-output";
+
+function convertDITA() {
+    const fileInput = document.getElementById('ditaFile');
+    if (!fileInput.files.length) {
+        alert("Please select a DITA XML file first.");
+        return;
+    }
+
+    currentFileName = fileInput.files[0].name.replace(/\.[^/.]+$/, ""); // Remove extension
 
     const reader = new FileReader();
-    reader.onload = function (event) {
+    reader.onload = function(e) {
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(event.target.result, "application/xml");
-        const htmlContent = transformDITA(xmlDoc);
-        document.getElementById("output").innerHTML = htmlContent;
-        buildSidebar();
+        const xmlDoc = parser.parseFromString(e.target.result, "application/xml");
+
+        if (xmlDoc.getElementsByTagName("parsererror").length) {
+            alert("Invalid XML file.");
+            return;
+        }
+
+        renderedHTML = transformDITA(xmlDoc);
+        document.getElementById("output").innerHTML = renderedHTML;
     };
-    reader.readAsText(file);
-});
+    reader.readAsText(fileInput.files[0]);
+}
 
 function transformDITA(xmlDoc) {
     let html = "";
     const root = xmlDoc.documentElement;
+
+    // Extract and render top-level title
     const title = root.getElementsByTagName("title")[0];
     if (title && root.tagName === "topic") {
         html += `<h1>${title.textContent}</h1>`;
     }
+
+    // Skip the first title when passing children
     let children = Array.from(root.children);
     if (children.length && children[0].tagName === "title") {
-        children.shift();
+        children.shift(); // remove first title to prevent duplication
     }
-    html += parseDITAChildren(children, 2);
+
+    html += parseDITAChildren(children, 2); // Start from h2
     return html;
 }
 
-function parseDITAChildren(children, level) {
+
+function parseDITAChildren(children, headingLevel) {
     let html = "";
-    children.forEach(child => {
+    for (let child of children) {
         switch (child.tagName) {
             case "title":
-                html += `<h${level}>${child.textContent}</h${level}>`;
+                html += `<h${headingLevel}>${child.textContent}</h${headingLevel}>`;
                 break;
             case "p":
                 html += `<p>${child.textContent}</p>`;
                 break;
-            case "section":
-                html += parseDITAChildren(Array.from(child.children), level + 1);
-                break;
             case "note":
-                html += `<div style="border-left: 4px solid orange; padding: 5px; background: #fff8e1;">${child.textContent}</div>`;
+                html += `<div class="note">💡 ${child.textContent}</div>`;
                 break;
             case "codeblock":
-                html += `<pre style="background:#1e1e1e; color:#dcdcdc; padding:10px; border-radius:5px;"><code>${child.textContent}</code></pre>`;
+                html += `<pre class="codeblock">${child.textContent}</pre>`;
+                break;
+            case "ul":
+                html += "<ul>" + parseDITAChildren(child.children, headingLevel) + "</ul>";
+                break;
+            case "ol":
+                html += "<ol>" + parseDITAChildren(child.children, headingLevel) + "</ol>";
+                break;
+            case "li":
+                html += `<li>${child.textContent}</li>`;
+                break;
+            case "section":
+                html += parseDITAChildren(child.children, headingLevel); // Title inside will adjust
                 break;
             case "table":
-                html += new XMLSerializer().serializeToString(child);
+                html += "<table>" + parseDITAChildren(child.children, headingLevel) + "</table>";
+                break;
+            case "tgroup":
+                html += parseDITAChildren(child.children, headingLevel);
+                break;
+            case "thead":
+                html += "<thead>" + parseDITAChildren(child.children, headingLevel) + "</thead>";
+                break;
+            case "tbody":
+                html += "<tbody>" + parseDITAChildren(child.children, headingLevel) + "</tbody>";
+                break;
+            case "row":
+                html += "<tr>" + parseDITAChildren(child.children, headingLevel) + "</tr>";
+                break;
+            case "entry":
+                html += `<td>${child.textContent}</td>`;
+                break;
+            case "image":
+                const href = child.getAttribute("href") || "";
+                html += `<img src="${href}" alt="">`;
                 break;
             default:
-                html += parseDITAChildren(Array.from(child.children), level);
+                html += parseDITAChildren(child.children, headingLevel);
         }
-    });
+    }
     return html;
 }
 
-// Sidebar builder
-function buildSidebar() {
-    const navList = document.getElementById("navList");
-    navList.innerHTML = "";
-    const headings = document.querySelectorAll("#output h1, #output h2, #output h3");
-    headings.forEach((heading, index) => {
-        heading.id = "heading-" + index;
-        const li = document.createElement("li");
-        li.textContent = heading.textContent;
-        li.addEventListener("click", () => {
-            heading.scrollIntoView({ behavior: "smooth" });
-        });
-        navList.appendChild(li);
-    });
-}
+function downloadPDF() {
+    if (!renderedHTML) {
+        alert("Please convert a file first.");
+        return;
+    }
 
-// Sidebar toggle
-document.getElementById("toggleSidebar").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.toggle("collapsed");
-});
-
-// Download HTML
-document.getElementById("downloadHTML").addEventListener("click", () => {
-    const content = document.getElementById("output").innerHTML;
-    const blob = new Blob([content], { type: "text/html" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "dita-output.html";
-    link.click();
-});
-
-// Download PDF
-document.getElementById("downloadPDF").addEventListener("click", () => {
     const element = document.getElementById("output");
-    html2pdf().from(element).save("dita-output.pdf");
-});
+    const opt = {
+        margin: [10, 20, 10, 20],
+        filename: currentFileName + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save();
+}
 </script>
 
 </body>
