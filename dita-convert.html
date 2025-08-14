@@ -3,153 +3,90 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DITA Converter</title>
+<title>DITA to HTML/PDF Converter</title>
+
+<!-- html2pdf library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
     body {
         font-family: Arial, sans-serif;
+        padding: 20px;
         max-width: 900px;
         margin: auto;
-        padding: 20px;
-        background-color: #f8f9fa;
     }
-    h1, h2, h3 {
-        color: #333;
-        border-bottom: 2px solid #ccc;
-        padding-bottom: 5px;
+
+    h1 {
+        font-size: 2em;
     }
-    p {
-        line-height: 1.6;
-        margin-bottom: 10px;
-        text-align: justify;
-    }
-    ul {
-        padding-left: 20px;
-    }
-    li {
-        margin-bottom: 5px;
-    }
-    pre {
-        background: #272822;
-        color: #f8f8f2;
-        padding: 10px;
-        border-radius: 5px;
-        overflow-x: auto;
-    }
-    button {
-        padding: 10px 15px;
-        margin: 10px 5px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-    }
-    button:disabled {
-        background-color: #aaa;
-        cursor: not-allowed;
-    }
-    #outputHTML {
-        background: white;
-        padding: 20px;
-        margin-top: 20px;
-        border-radius: 5px;
-        border: 1px solid #ccc;
+
+    /* Print/PDF-specific styles */
+    @media print {
+        body {
+            font-size: 12px;
+        }
+        h1 {
+            font-size: 18px;
+        }
     }
 </style>
 </head>
 <body>
 
-<h1>DITA to HTML & PDF Converter</h1>
+<h1>DITA to HTML/PDF Converter</h1>
+
 <input type="file" id="fileInput" accept=".xml">
-<br><br>
-<button id="downloadHTML" disabled>Download HTML</button>
-<button id="downloadPDF" disabled>Download PDF</button>
+<button id="downloadHTML">Download HTML</button>
+<button id="downloadPDF">Download PDF</button>
 
-<div id="outputHTML"></div>
-
-<!-- Load html2canvas first -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<!-- Load jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div id="output" style="margin-top:20px; border:1px solid #ccc; padding:10px;">
+    <em>Your converted content will appear here...</em>
+</div>
 
 <script>
-let fileNameWithoutExt = "dita-output";
-let htmlContent = "";
-
-document.getElementById("fileInput").addEventListener("change", function() {
-    const file = this.files[0];
+document.getElementById('fileInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
     if (!file) return;
-
-    fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
 
-        htmlContent = convertDitaToHtml(xmlDoc);
+        // Simple XML to HTML conversion (modify for your DITA)
+        let htmlContent = "<h1>" + xmlDoc.getElementsByTagName("title")[0]?.textContent + "</h1>";
+        const sections = xmlDoc.getElementsByTagName("p");
+        for (let i = 0; i < sections.length; i++) {
+            htmlContent += "<p>" + sections[i].textContent + "</p>";
+        }
 
-        document.getElementById("outputHTML").innerHTML = htmlContent;
-        document.getElementById("downloadHTML").disabled = false;
-        document.getElementById("downloadPDF").disabled = false;
+        document.getElementById('output').innerHTML = htmlContent;
+
+        // Store filename for later
+        document.getElementById('output').dataset.filename = file.name.replace(/\.[^/.]+$/, "");
     };
     reader.readAsText(file);
 });
 
-function convertDitaToHtml(xmlDoc) {
-    let html = "";
-
-    // Title
-    const title = xmlDoc.getElementsByTagName("title")[0];
-    if (title) html += `<h1>${title.textContent}</h1>`;
-
-    // Paragraphs
-    const paras = xmlDoc.getElementsByTagName("p");
-    for (let p of paras) html += `<p>${p.textContent}</p>`;
-
-    // Lists
-    const lists = xmlDoc.getElementsByTagName("ul");
-    for (let list of lists) {
-        html += "<ul>";
-        for (let li of list.getElementsByTagName("li")) {
-            html += `<li>${li.textContent}</li>`;
-        }
-        html += "</ul>";
-    }
-
-    // Code blocks
-    const codes = xmlDoc.getElementsByTagName("codeblock");
-    for (let code of codes) {
-        html += `<pre><code>${code.textContent}</code></pre>`;
-    }
-
-    return html;
-}
-
-document.getElementById("downloadHTML").addEventListener("click", function() {
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const link = document.createElement("a");
+document.getElementById('downloadHTML').addEventListener('click', function() {
+    const content = document.getElementById('output').innerHTML;
+    const blob = new Blob([content], { type: 'text/html' });
+    const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${fileNameWithoutExt}.html`;
+    link.download = (document.getElementById('output').dataset.filename || 'output') + ".html";
     link.click();
 });
 
-document.getElementById("downloadPDF").addEventListener("click", function() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        unit: "mm",
-        format: "a4",
-        putOnlyUsedFonts: true
-    });
+document.getElementById('downloadPDF').addEventListener('click', function() {
+    const element = document.getElementById('output');
+    const filename = (element.dataset.filename || 'output') + ".pdf";
 
-    doc.html(document.getElementById("outputHTML"), {
-        callback: function (pdf) {
-            pdf.save(`${fileNameWithoutExt}.pdf`);
-        },
-        x: 15, // Left margin
-        y: 15, // Top margin
-        html2canvas: { scale: 0.7 } // Adjust scale for better fitting
-    });
+    html2pdf().set({
+        margin: 10,
+        filename: filename,
+        html2canvas: { scale: 1.5 }, // lower scale → smaller text
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(element).save();
 });
 </script>
 
