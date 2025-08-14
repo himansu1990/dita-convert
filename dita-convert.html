@@ -4,177 +4,100 @@
 <meta charset="UTF-8">
 <title>DITA XML Converter</title>
 <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: #f7f7f7;
-}
-h1, h2, h3, h4, h5 {
-    color: #333;
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 4px;
-}
-p {
-    line-height: 1.6;
-    color: #444;
-}
-note {
-    display: block;
-    background: #fff8d1;
-    border-left: 6px solid #f4c430;
-    padding: 10px;
-    margin: 10px 0;
-    font-style: italic;
-}
-codeblock, pre {
-    display: block;
-    background: #272822;
-    color: #f8f8f2;
-    padding: 10px;
-    overflow-x: auto;
-    border-radius: 4px;
-    font-family: monospace;
-    white-space: pre-wrap;
-}
-ul, ol {
-    margin: 10px 0 10px 40px;
-}
-button {
-    margin-top: 10px;
-    padding: 10px 15px;
-    background: #4CAF50;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    border-radius: 4px;
-}
-button:hover {
-    background: #45a049;
-}
-.output-container {
-    background: white;
-    padding: 20px;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+    h1 { text-align: center; }
+    textarea { width: 100%; height: 200px; }
+    #outputHTML { border: 1px solid #ccc; padding: 10px; margin-top: 10px; background: #fafafa; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
 </style>
 </head>
 <body>
-
 <h1>DITA XML to HTML & PDF Converter</h1>
-<input type="file" id="ditaFile" accept=".xml,.dita">
-<br>
-<button onclick="convertDITA()">Convert</button>
-<button onclick="downloadPDF()">Download as PDF</button>
 
-<div id="output" class="output-container" style="margin-top:20px;"></div>
+<input type="file" id="fileInput" accept=".xml,.dita,.ditamap"><br><br>
+<button id="downloadHTML" disabled>Download HTML</button>
+<button id="downloadPDF" disabled>Download PDF</button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+<h2>HTML Preview</h2>
+<div id="outputHTML"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-let renderedHTML = "";
+let fileNameWithoutExt = "dita-output"; // Default if no file uploaded
+let htmlContent = "";
 
-function convertDITA() {
-    const fileInput = document.getElementById('ditaFile');
-    if (!fileInput.files.length) {
-        alert("Please select a DITA XML file first.");
-        return;
-    }
+document.getElementById("fileInput").addEventListener("change", function() {
+    const file = this.files[0];
+    if (!file) return;
+
+    fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, ""); // remove extension
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(e.target.result, "application/xml");
+        const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
 
-        // Check for parse errors
-        if (xmlDoc.getElementsByTagName("parsererror").length) {
-            alert("Invalid XML file.");
-            return;
-        }
+        // Basic DITA to HTML conversion (can be expanded for better formatting)
+        htmlContent = convertDitaToHtml(xmlDoc);
 
-        // Convert XML to styled HTML
-        renderedHTML = transformDITA(xmlDoc);
-        document.getElementById("output").innerHTML = renderedHTML;
+        document.getElementById("outputHTML").innerHTML = htmlContent;
+        document.getElementById("downloadHTML").disabled = false;
+        document.getElementById("downloadPDF").disabled = false;
     };
-    reader.readAsText(fileInput.files[0]);
-}
+    reader.readAsText(file);
+});
 
-function transformDITA(xmlDoc) {
+function convertDitaToHtml(xmlDoc) {
     let html = "";
 
     // Title
     const title = xmlDoc.getElementsByTagName("title")[0];
-    if (title) {
-        html += `<h1>${title.textContent}</h1>`;
+    if (title) html += `<h1>${title.textContent}</h1>`;
+
+    // Paragraphs
+    const paras = xmlDoc.getElementsByTagName("p");
+    for (let p of paras) {
+        html += `<p>${p.textContent}</p>`;
     }
 
-    // Body content
-    const bodyContent = xmlDoc.getElementsByTagName("body")[0];
-    if (bodyContent) {
-        html += parseDITAChildren(bodyContent.children);
-    } else {
-        // For <topic> without <body>
-        html += parseDITAChildren(xmlDoc.documentElement.children);
-    }
-
-    return html;
-}
-
-function parseDITAChildren(children) {
-    let html = "";
-    for (let child of children) {
-        switch (child.tagName) {
-            case "p":
-                html += `<p>${child.textContent}</p>`;
-                break;
-            case "note":
-                html += `<note>${child.textContent}</note>`;
-                break;
-            case "codeblock":
-                html += `<codeblock>${child.textContent}</codeblock>`;
-                break;
-            case "ul":
-                html += "<ul>";
-                html += parseDITAChildren(child.children);
-                html += "</ul>";
-                break;
-            case "ol":
-                html += "<ol>";
-                html += parseDITAChildren(child.children);
-                html += "</ol>";
-                break;
-            case "li":
-                html += `<li>${child.textContent}</li>`;
-                break;
-            case "section":
-                html += `<h2>${child.getElementsByTagName("title")[0]?.textContent || ""}</h2>`;
-                html += parseDITAChildren(child.children);
-                break;
-            default:
-                html += parseDITAChildren(child.children);
+    // Lists
+    const lists = xmlDoc.getElementsByTagName("ul");
+    for (let list of lists) {
+        html += "<ul>";
+        for (let li of list.getElementsByTagName("li")) {
+            html += `<li>${li.textContent}</li>`;
         }
+        html += "</ul>";
     }
+
+    // Code blocks
+    const codes = xmlDoc.getElementsByTagName("codeblock");
+    for (let code of codes) {
+        html += `<pre><code>${code.textContent}</code></pre>`;
+    }
+
     return html;
 }
 
-function downloadPDF() {
-    if (!renderedHTML) {
-        alert("Please convert a file first.");
-        return;
-    }
+document.getElementById("downloadHTML").addEventListener("click", function() {
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${fileNameWithoutExt}.html`;
+    link.click();
+});
 
-    const element = document.getElementById("output");
-    const opt = {
-        margin: [10, 20, 10, 20], // top, left, bottom, right margins in mm
-        filename: 'dita-output.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save();
-}
+document.getElementById("downloadPDF").addEventListener("click", function() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.html(document.getElementById("outputHTML"), {
+        callback: function (pdf) {
+            pdf.save(`${fileNameWithoutExt}.pdf`);
+        },
+        x: 10,
+        y: 10
+    });
+});
 </script>
-
 </body>
 </html>
