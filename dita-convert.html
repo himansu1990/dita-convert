@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DITA XML Converter</title>
+<title>Enhanced DITA XML Converter</title>
 <style>
 body {
     font-family: Arial, sans-serif;
@@ -19,7 +19,7 @@ p {
     line-height: 1.6;
     color: #444;
 }
-note {
+.note {
     display: block;
     background: #fff8d1;
     border-left: 6px solid #f4c430;
@@ -27,7 +27,7 @@ note {
     margin: 10px 0;
     font-style: italic;
 }
-codeblock, pre {
+.codeblock, pre {
     display: block;
     background: #272822;
     color: #f8f8f2;
@@ -37,8 +37,22 @@ codeblock, pre {
     font-family: monospace;
     white-space: pre-wrap;
 }
-ul, ol {
-    margin: 10px 0 10px 40px;
+table {
+    border-collapse: collapse;
+    margin: 15px 0;
+    width: 100%;
+    background: white;
+}
+table, th, td {
+    border: 1px solid #ccc;
+}
+th, td {
+    padding: 8px 12px;
+    text-align: left;
+}
+img {
+    max-width: 100%;
+    margin: 10px 0;
 }
 button {
     margin-top: 10px;
@@ -62,7 +76,7 @@ button:hover {
 </head>
 <body>
 
-<h1>DITA XML to HTML & PDF Converter</h1>
+<h1>Enhanced DITA XML to HTML & PDF Converter</h1>
 <input type="file" id="ditaFile" accept=".xml,.dita">
 <br>
 <button onclick="convertDITA()">Convert</button>
@@ -73,7 +87,7 @@ button:hover {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 <script>
 let renderedHTML = "";
-let originalFileName = ""; // Store uploaded file name
+let currentFileName = "dita-output";
 
 function convertDITA() {
     const fileInput = document.getElementById('ditaFile');
@@ -82,21 +96,18 @@ function convertDITA() {
         return;
     }
 
-    // Store the file name without extension
-    originalFileName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
+    currentFileName = fileInput.files[0].name.replace(/\.[^/.]+$/, ""); // Remove extension
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(e.target.result, "application/xml");
 
-        // Check for parse errors
         if (xmlDoc.getElementsByTagName("parsererror").length) {
             alert("Invalid XML file.");
             return;
         }
 
-        // Convert XML to styled HTML
         renderedHTML = transformDITA(xmlDoc);
         document.getElementById("output").innerHTML = renderedHTML;
     };
@@ -105,52 +116,70 @@ function convertDITA() {
 
 function transformDITA(xmlDoc) {
     let html = "";
+    const root = xmlDoc.documentElement;
 
-    // Title
-    const title = xmlDoc.getElementsByTagName("title")[0];
-    if (title) {
+    // Top-level title
+    const title = root.getElementsByTagName("title")[0];
+    if (title && root.tagName === "topic") {
         html += `<h1>${title.textContent}</h1>`;
     }
 
-    // Body content
-    const bodyContent = xmlDoc.getElementsByTagName("body")[0];
-    if (bodyContent) {
-        html += parseDITAChildren(bodyContent.children);
-    } else {
-        html += parseDITAChildren(xmlDoc.documentElement.children);
-    }
-
+    html += parseDITAChildren(root.children, 2); // Start heading level at h2 for sections
     return html;
 }
 
-function parseDITAChildren(children) {
+function parseDITAChildren(children, headingLevel) {
     let html = "";
     for (let child of children) {
         switch (child.tagName) {
+            case "title":
+                html += `<h${headingLevel}>${child.textContent}</h${headingLevel}>`;
+                break;
             case "p":
                 html += `<p>${child.textContent}</p>`;
                 break;
             case "note":
-                html += `<note>${child.textContent}</note>`;
+                html += `<div class="note">💡 ${child.textContent}</div>`;
                 break;
             case "codeblock":
-                html += `<codeblock>${child.textContent}</codeblock>`;
+                html += `<pre class="codeblock">${child.textContent}</pre>`;
                 break;
             case "ul":
-                html += "<ul>" + parseDITAChildren(child.children) + "</ul>";
+                html += "<ul>" + parseDITAChildren(child.children, headingLevel) + "</ul>";
                 break;
             case "ol":
-                html += "<ol>" + parseDITAChildren(child.children) + "</ol>";
+                html += "<ol>" + parseDITAChildren(child.children, headingLevel) + "</ol>";
                 break;
             case "li":
                 html += `<li>${child.textContent}</li>`;
                 break;
             case "section":
-                html += `<h2>${child.getElementsByTagName("title")[0]?.textContent || ""}</h2>`;
-                html += parseDITAChildren(child.children);
+                html += parseDITAChildren(child.children, headingLevel); // Title inside will adjust
+                break;
+            case "table":
+                html += "<table>" + parseDITAChildren(child.children, headingLevel) + "</table>";
+                break;
+            case "tgroup":
+                html += parseDITAChildren(child.children, headingLevel);
+                break;
+            case "thead":
+                html += "<thead>" + parseDITAChildren(child.children, headingLevel) + "</thead>";
+                break;
+            case "tbody":
+                html += "<tbody>" + parseDITAChildren(child.children, headingLevel) + "</tbody>";
+                break;
+            case "row":
+                html += "<tr>" + parseDITAChildren(child.children, headingLevel) + "</tr>";
+                break;
+            case "entry":
+                html += `<td>${child.textContent}</td>`;
+                break;
+            case "image":
+                const href = child.getAttribute("href") || "";
+                html += `<img src="${href}" alt="">`;
                 break;
             default:
-                html += parseDITAChildren(child.children);
+                html += parseDITAChildren(child.children, headingLevel);
         }
     }
     return html;
@@ -165,7 +194,7 @@ function downloadPDF() {
     const element = document.getElementById("output");
     const opt = {
         margin: [10, 20, 10, 20],
-        filename: `${originalFileName}.pdf`, // ✅ Use original file name
+        filename: currentFileName + '.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -174,7 +203,6 @@ function downloadPDF() {
     html2pdf().set(opt).from(element).save();
 }
 </script>
-
 
 </body>
 </html>
