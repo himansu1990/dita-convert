@@ -2,323 +2,112 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DITA → HTML & PDF (GitHub‑safe, with Images)</title>
+<title>DITA Converter (Styled)</title>
+<link rel="icon" href="data:,">
 <style>
-  :root{--bg:#0e1325;--panel:#141b36;--text:#e8ecff;--muted:#9aa6d1;--border:#28346b}
-  *{box-sizing:border-box}
-  body{margin:0;background:linear-gradient(180deg,#0e1325,#0a1022);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
-  .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:12px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
-  header.card{padding:14px 16px}
-  h1{font-size:18px;margin:0}
-  .controls{padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .btn{appearance:none;border:1px solid var(--border);background:#0f1736;color:var(--text);padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
-  .btn.primary{background:#1a2c75;border-color:#2b46a8}
-  .btn:disabled{opacity:.6;cursor:not-allowed}
-  .badge{font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted)}
-  .notice{font-size:12px;color:var(--muted);padding:0 16px 12px}
-  .preview{height:74vh;border-top-left-radius:14px;border-top-right-radius:14px;overflow:auto;background:#fff}
-  #preview{width:100%;height:100%;padding:20px;color:#111}
-  input[type=file]{display:none}
-  label.file{border:1px dashed var(--border);padding:10px 14px;border-radius:10px;cursor:pointer}
-  .spacer{flex:1}
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; background: #f9f9f9; }
+    .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1, h2, h3 { color: #333; }
+    p { margin-bottom: 10px; }
+    note { display: block; background: #fffae6; padding: 10px; border-left: 5px solid #ffcc00; margin: 10px 0; }
+    codeblock, pre { background: #eee; padding: 10px; display: block; border-radius: 5px; overflow-x: auto; }
+    ul, ol { padding-left: 20px; }
+    section { margin-bottom: 20px; }
+    img { max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ccc; }
+    button { margin: 10px 5px 10px 0; padding: 10px; cursor: pointer; }
 </style>
-<!-- html2pdf.js -->
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-  <header class="card">
-    <h1>DITA → HTML & PDF (Simple • GitHub‑safe • Images supported)</h1>
-  </header>
+<div class="container">
+    <h1>DITA XML to HTML/PDF Converter</h1>
+    <input type="file" id="xmlFile" accept=".xml"><br><br>
+    <input type="file" id="assetFiles" multiple><br><br>
+    <button id="generateHtml">Generate HTML</button>
+    <button id="downloadHtml" disabled>Download HTML</button>
+    <button id="downloadPdf" disabled>Download PDF</button>
+    <div id="preview"></div>
+</div>
 
-  <div class="wrap">
-    <section class="card">
-      <div class="controls">
-        <label class="file" for="xmlFile">Choose DITA .xml / .dita</label>
-        <input id="xmlFile" type="file" accept=".xml,.dita" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+<script>
+const xmlInput = document.getElementById('xmlFile');
+const assetsInput = document.getElementById('assetFiles');
+const preview = document.getElementById('preview');
+let assetMap = {};
 
-        <label class="file" for="assetFiles">Add images/assets (optional)</label>
-        <input id="assetFiles" type="file" accept="image/*,.svg" multiple />
-        <span class="badge" id="assetCount">0 assets</span>
+assetsInput.addEventListener('change', () => {
+    [...assetsInput.files].forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => assetMap[file.name] = e.target.result;
+        reader.readAsDataURL(file);
+    });
+});
 
-        <span class="spacer"></span>
-        <button class="btn primary" id="btnHtml" disabled>Generate HTML</button>
-        <button class="btn" id="btnDownloadHtml" disabled>Download HTML</button>
-        <button class="btn" id="btnPdf" disabled>Download PDF</button>
-        <span class="badge" id="status">Idle</span>
-      </div>
-      <p class="notice">Client‑side only. Images you add here will be embedded as data URLs, so they render in preview, downloaded HTML, and PDF. For production features (keys, conrefs, profiling), use DITA‑OT.</p>
-    </section>
+function ditaToHtml(node) {
+    if (!node) return "";
 
-    <section class="card preview">
-      <div id="preview" title="Preview"></div>
-    </section>
-  </div>
-
-  <!-- XSLT stored in a script tag so GitHub Pages preserves it verbatim -->
-  <script type="text/xsl" id="xslt-basic">
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-  <xsl:output method="html" encoding="UTF-8" indent="yes"/>
-  <xsl:template match="/">
-    <html>
-      <head>
-        <meta charset="UTF-8"/>
-        <title><xsl:value-of select="//title[1]"/></title>
-        <style>
-          body{font-family:system-ui,Segoe UI,Roboto,Inter,Arial;line-height:1.6;color:#111;margin:0}
-          .page{max-width:920px;margin:0 auto;padding:10px 0}
-          h1,h2,h3{line-height:1.25}
-          h1{font-size:2rem;margin:.2em 0 .6em}
-          h2{font-size:1.5rem;margin:1.2em 0 .3em}
-          h3{font-size:1.2rem;margin:1em 0 .25em}
-          p{margin:.5em 0}
-          .shortdesc{color:#333;background:#f6f8ff;border-left:4px solid #8aa2ff;padding:.75em 1em;border-radius:6px}
-          pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace}
-          pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto}
-          table{border-collapse:collapse;margin:12px 0;width:100%}
-          th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
-          figure{margin:1em 0;text-align:center}
-          figcaption{font-size:.9em;color:#555}
-          img{max-width:100%;height:auto}
-          @media print{.page{padding:0} a{color:#000;text-decoration:none}}
-        </style>
-      </head>
-      <body>
-        <div class="page">
-          <xsl:apply-templates select="/*"/>
-        </div>
-      </body>
-    </html>
-  </xsl:template>
-
-  <!-- Topic-like roots -->
-  <xsl:template match="topic | task | concept | reference">
-    <article>
-      <h1><xsl:value-of select="title"/></h1>
-      <xsl:if test="shortdesc"><p class="shortdesc"><xsl:apply-templates select="shortdesc/node()"/></p></xsl:if>
-      <xsl:apply-templates select="body | taskbody | refbody"/>
-    </article>
-  </xsl:template>
-
-  <!-- Minimal map support -->
-  <xsl:template match="map">
-    <section>
-      <h1><xsl:value-of select="title"/></h1>
-      <ul>
-        <xsl:for-each select="topicref">
-          <li>
-            <xsl:choose>
-              <xsl:when test="@navtitle"><xsl:value-of select="@navtitle"/></xsl:when>
-              <xsl:when test="@href"><a href="{@href}"><xsl:value-of select="@href"/></a></xsl:when>
-              <xsl:otherwise><em>Topic</em></xsl:otherwise>
-            </xsl:choose>
-          </li>
-        </xsl:for-each>
-      </ul>
-    </section>
-  </xsl:template>
-
-  <!-- Common blocks -->
-  <xsl:template match="section">
-    <section>
-      <h2><xsl:value-of select="title"/></h2>
-      <xsl:apply-templates/>
-    </section>
-  </xsl:template>
-  <xsl:template match="p"><p><xsl:apply-templates/></p></xsl:template>
-  <xsl:template match="ul"><ul><xsl:apply-templates/></ul></xsl:template>
-  <xsl:template match="ol"><ol><xsl:apply-templates/></ol></xsl:template>
-  <xsl:template match="li"><li><xsl:apply-templates/></li></xsl:template>
-  <xsl:template match="codeblock"><pre><xsl:apply-templates/></pre></xsl:template>
-  <xsl:template match="codeph"><code><xsl:apply-templates/></code></xsl:template>
-  <xsl:template match="b"><strong><xsl:apply-templates/></strong></xsl:template>
-  <xsl:template match="i"><em><xsl:apply-templates/></em></xsl:template>
-
-  <!-- Links & images -->
-  <xsl:template match="xref | link">
-    <xsl:choose>
-      <xsl:when test="@href"><a href="{@href}"><xsl:apply-templates/></a></xsl:when>
-      <xsl:otherwise><xsl:apply-templates/></xsl:otherwise>
-    </xsl:choose>
-  </xsl:template>
-  <xsl:template match="image"><img src="{@href}" alt="{(@alt|@alt)[1]}"/></xsl:template>
-  <xsl:template match="fig">
-    <figure>
-      <xsl:apply-templates select="image"/>
-      <figcaption><xsl:value-of select="title"/></figcaption>
-    </figure>
-  </xsl:template>
-
-  <!-- Tables (CALS-like) -->
-  <xsl:template match="table"><table><xsl:apply-templates/></table></xsl:template>
-  <xsl:template match="tgroup"><xsl:apply-templates/></xsl:template>
-  <xsl:template match="thead"><thead><xsl:apply-templates/></thead></xsl:template>
-  <xsl:template match="tbody"><tbody><xsl:apply-templates/></tbody></xsl:template>
-  <xsl:template match="row"><tr><xsl:apply-templates/></tr></xsl:template>
-  <xsl:template match="entry"><td><xsl:apply-templates/></td></xsl:template>
-
-  <!-- Default: copy text -->
-  <xsl:template match="text()|@*"><xsl:value-of select="."/></xsl:template>
-</xsl:stylesheet>
-  </script>
-
-  <script>
-    (function(){
-      const fileInput = document.getElementById('xmlFile');
-      const assetInput = document.getElementById('assetFiles');
-      const assetCount = document.getElementById('assetCount');
-      const btnHtml = document.getElementById('btnHtml');
-      const btnDownloadHtml = document.getElementById('btnDownloadHtml');
-      const btnPdf = document.getElementById('btnPdf');
-      const status = document.getElementById('status');
-      const preview = document.getElementById('preview');
-
-      let xmlDoc = null; // Parsed XML DOM
-      let htmlFragment = ''; // Serialized HTML inside <body>
-      let xsltDoc = null; // Parsed XSLT DOM
-      let baseName = 'output';
-
-      // filename (lowercased) -> dataURL
-      const assetMap = new Map();
-
-      function setStatus(msg){ status.textContent = msg; }
-
-      function parseXml(text){
-        const p = new DOMParser();
-        const doc = p.parseFromString(text, 'application/xml');
-        const err = doc.querySelector('parsererror');
-        if(err){ throw new Error(err.textContent.replace(/
-/g,' ')); }
-        return doc;
-      }
-
-      function loadXslt(){
-        if(xsltDoc) return xsltDoc;
-        const raw = document.getElementById('xslt-basic').textContent;
-        xsltDoc = parseXml(raw);
-        return xsltDoc;
-      }
-
-      async function buildAssetMap(files){
-        if(!files || !files.length) return;
-        const tasks = Array.from(files).map(file=> new Promise((resolve,reject)=>{
-          const reader = new FileReader();
-          reader.onload = ()=>{
-            const key = file.name.toLowerCase();
-            assetMap.set(key, reader.result);
-            resolve();
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        }));
-        await Promise.all(tasks);
-        assetCount.textContent = assetMap.size + ' assets';
-      }
-
-      function rewriteImages(container){
-        const imgs = container.querySelectorAll('img');
-        imgs.forEach(img=>{
-          try{
-            const src = img.getAttribute('src') || '';
-            const parts = src.split('/');
-            const file = decodeURIComponent(parts[parts.length-1]).toLowerCase();
-            if(assetMap.has(file)){
-              img.setAttribute('src', assetMap.get(file));
+    switch (node.nodeName.toLowerCase()) {
+        case "title": return `<h2>${node.textContent}</h2>`;
+        case "p": return `<p>${node.textContent}</p>`;
+        case "note": return `<note>${node.textContent}</note>`;
+        case "section": return `<section>${Array.from(node.childNodes).map(ditaToHtml).join('')}</section>`;
+        case "li": return `<li>${node.textContent}</li>`;
+        case "ul": return `<ul>${Array.from(node.childNodes).map(ditaToHtml).join('')}</ul>`;
+        case "ol": return `<ol>${Array.from(node.childNodes).map(ditaToHtml).join('')}</ol>`;
+        case "codeblock": return `<pre><code>${node.textContent}</code></pre>`;
+        case "image":
+            let src = node.getAttribute("href") || "";
+            let fileName = src.split('/').pop();
+            let imgSrc = assetMap[fileName] || src;
+            return `<img src="${imgSrc}" alt="${fileName}">`;
+        default:
+            if (node.childNodes.length) {
+                return Array.from(node.childNodes).map(ditaToHtml).join('');
             }
-            img.setAttribute('crossorigin','anonymous');
-            img.referrerPolicy = 'no-referrer';
-          }catch(e){/* ignore per-image errors */}
-        });
-      }
+            return node.nodeValue || "";
+    }
+}
 
-      // Handle asset selection
-      assetInput.addEventListener('change', async (e)=>{
-        await buildAssetMap(e.target.files);
-        setStatus('Assets loaded');
-      });
+document.getElementById('generateHtml').addEventListener('click', () => {
+    if (!xmlInput.files.length) {
+        alert("Please upload a DITA XML file.");
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(e.target.result, "application/xml");
 
-      // Handle XML selection
-      fileInput.addEventListener('change', async (e)=>{
-        const f = e.target.files && e.target.files[0];
-        if(!f){ return; }
-        try{
-          baseName = f.name.replace(/\.[^/.]+$/, '') || 'output';
-          const text = await f.text();
-          xmlDoc = parseXml(text);
-          setStatus('XML loaded: ' + f.name);
-          btnHtml.disabled = false;
-          btnDownloadHtml.disabled = true;
-          btnPdf.disabled = true;
-        }catch(err){
-          console.error(err);
-          setStatus('Failed to parse XML');
-          btnHtml.disabled = true;
-          btnDownloadHtml.disabled = true;
-          btnPdf.disabled = true;
+        if (xmlDoc.getElementsByTagName("parsererror").length) {
+            alert("Invalid XML file.");
+            return;
         }
-      });
 
-      // Transform to HTML fragment and render
-      btnHtml.addEventListener('click', ()=>{
-        if(!xmlDoc){ return; }
-        try{
-          const proc = new XSLTProcessor();
-          proc.importStylesheet(loadXslt());
-          const doc = proc.transformToDocument(xmlDoc);
-          const body = doc.querySelector('body');
-          const content = body ? body.innerHTML : new XMLSerializer().serializeToString(doc);
+        let htmlContent = ditaToHtml(xmlDoc.documentElement);
+        preview.innerHTML = htmlContent;
+        document.getElementById('downloadHtml').disabled = false;
+        document.getElementById('downloadPdf').disabled = false;
+    };
+    reader.readAsText(xmlInput.files[0]);
+});
 
-          // Place into preview container
-          preview.innerHTML = content;
-          // Rewrite images to embedded data URLs if provided
-          rewriteImages(preview);
+document.getElementById('downloadHtml').addEventListener('click', () => {
+    const blob = new Blob([`<html><head><meta charset="UTF-8"><title>DITA Output</title></head><body>${preview.innerHTML}</body></html>`], {type: "text/html"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "dita-output.html";
+    link.click();
+});
 
-          // Save fragment for downloads
-          htmlFragment = preview.innerHTML;
-
-          btnDownloadHtml.disabled = false;
-          btnPdf.disabled = false;
-          setStatus('HTML generated');
-        }catch(err){
-          console.error(err); setStatus('Transform error');
-        }
-      });
-
-      // Download HTML (self-contained with data URLs)
-      btnDownloadHtml.addEventListener('click', ()=>{
-        if(!htmlFragment) return;
-        const shell = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${baseName}</title></head><body>${htmlFragment}</body></html>`;
-        const blob = new Blob([shell], {type:'text/html'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = baseName + '.html';
-        a.click();
-      });
-
-      // Download PDF via html2pdf
-      btnPdf.addEventListener('click', async ()=>{
-        if(!htmlFragment) return;
-        setStatus('Rendering PDF…');
-        // Ensure images are loaded before capture
-        const imgs = Array.from(preview.querySelectorAll('img'));
-        await Promise.all(imgs.map(img=> img.complete ? Promise.resolve() : new Promise(res=>{ img.onload=img.onerror=()=>res(); })));
-        // small delay to settle layout
-        setTimeout(async ()=>{
-          try{
-            await html2pdf().from(preview).set({
-              filename: baseName + '.pdf',
-              html2canvas: { scale: 2, useCORS: true, allowTaint: true },
-              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).save();
-            setStatus('PDF downloaded');
-          }catch(err){ console.error(err); setStatus('PDF failed'); }
-        }, 150);
-      });
-
-      // Init
-      setStatus('Idle');
-    })();
-  </script>
+document.getElementById('downloadPdf').addEventListener('click', () => {
+    if (!preview.innerHTML.trim()) {
+        alert("Generate HTML first.");
+        return;
+    }
+    setTimeout(() => {
+        html2pdf().from(preview).save("dita-output.pdf");
+    }, 300);
+});
+</script>
 </body>
 </html>
