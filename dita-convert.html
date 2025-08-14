@@ -2,42 +2,91 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>DITA XML Converter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DITA Converter</title>
 <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
-    h1 { text-align: center; }
-    textarea { width: 100%; height: 200px; }
-    #outputHTML { border: 1px solid #ccc; padding: 10px; margin-top: 10px; background: #fafafa; }
-    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 900px;
+        margin: auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+    h1, h2, h3 {
+        color: #333;
+        border-bottom: 2px solid #ccc;
+        padding-bottom: 5px;
+    }
+    p {
+        line-height: 1.6;
+        margin-bottom: 10px;
+        text-align: justify;
+    }
+    ul {
+        padding-left: 20px;
+    }
+    li {
+        margin-bottom: 5px;
+    }
+    pre {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+    }
+    button {
+        padding: 10px 15px;
+        margin: 10px 5px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+    button:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
+    }
+    #outputHTML {
+        background: white;
+        padding: 20px;
+        margin-top: 20px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+    }
 </style>
 </head>
 <body>
-<h1>DITA XML to HTML & PDF Converter</h1>
 
-<input type="file" id="fileInput" accept=".xml,.dita,.ditamap"><br><br>
+<h1>DITA to HTML & PDF Converter</h1>
+<input type="file" id="fileInput" accept=".xml">
+<br><br>
 <button id="downloadHTML" disabled>Download HTML</button>
 <button id="downloadPDF" disabled>Download PDF</button>
 
-<h2>HTML Preview</h2>
 <div id="outputHTML"></div>
 
+<!-- Load html2canvas first -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Load jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
-let fileNameWithoutExt = "dita-output"; // Default if no file uploaded
+let fileNameWithoutExt = "dita-output";
 let htmlContent = "";
 
 document.getElementById("fileInput").addEventListener("change", function() {
     const file = this.files[0];
     if (!file) return;
 
-    fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, ""); // remove extension
+    fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(e.target.result, "text/xml");
 
-        // Basic DITA to HTML conversion (can be expanded for better formatting)
         htmlContent = convertDitaToHtml(xmlDoc);
 
         document.getElementById("outputHTML").innerHTML = htmlContent;
@@ -56,9 +105,7 @@ function convertDitaToHtml(xmlDoc) {
 
     // Paragraphs
     const paras = xmlDoc.getElementsByTagName("p");
-    for (let p of paras) {
-        html += `<p>${p.textContent}</p>`;
-    }
+    for (let p of paras) html += `<p>${p.textContent}</p>`;
 
     // Lists
     const lists = xmlDoc.getElementsByTagName("ul");
@@ -89,15 +136,22 @@ document.getElementById("downloadHTML").addEventListener("click", function() {
 
 document.getElementById("downloadPDF").addEventListener("click", function() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+        unit: "mm",
+        format: "a4",
+        putOnlyUsedFonts: true
+    });
+
     doc.html(document.getElementById("outputHTML"), {
         callback: function (pdf) {
             pdf.save(`${fileNameWithoutExt}.pdf`);
         },
-        x: 10,
-        y: 10
+        x: 15, // Left margin
+        y: 15, // Top margin
+        html2canvas: { scale: 0.7 } // Adjust scale for better fitting
     });
 });
 </script>
+
 </body>
 </html>
