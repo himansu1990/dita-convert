@@ -108,14 +108,26 @@ textarea {
 <button onclick="downloadLivePDF()">Download Live Output as PDF</button>
 <button onclick="downloadLiveHTML()">Download Live Output as HTML</button>
 
-<h2>Rich Text Editor → DITA XML</h2>
+<h2>Professional Rich Text → DITA XML</h2>
 <div class="editor-container">
-    <div id="richEditor" contenteditable="true" style="width:50%; height:400px; padding:10px; border:1px solid #ccc; overflow:auto; font-family:Arial;">
-        Type here...
+    <!-- Left Rich Editor -->
+    <div id="proEditor" contenteditable="true" style="width:50%; height:400px; border:1px solid #ccc; padding:10px; overflow:auto; font-family:Arial;">
+        <h1 data-node="title">Type Title Here</h1>
+        <p data-node="p1">Type first paragraph...</p>
+        <div class="note" data-node="note1">Type note here...</div>
+        <pre data-node="code1">Type code here...</pre>
     </div>
-    <textarea id="ditaFromRich" readonly style="width:50%; height:400px; padding:10px; font-family:monospace;"></textarea>
+    <!-- Right DITA XML Skeleton -->
+    <textarea id="proDITA" readonly style="width:50%; height:400px; padding:10px; font-family:monospace;">
+<topic id="generated-topic">
+    <title>Type Title Here</title>
+    <p>Type first paragraph...</p>
+    <note>Type note here...</note>
+    <codeblock>Type code here...</codeblock>
+</topic>
+    </textarea>
 </div>
-<button onclick="downloadRichDITA()">Download DITA XML</button>    
+<button onclick="downloadProDITA()">Download DITA XML</button>
     
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 <script>
@@ -232,55 +244,41 @@ textarea.addEventListener("input", () => {
     } catch { liveOutput.innerHTML = "<p style='color:red;'>Error parsing XML</p>"; }
 });
 </script>
-    <script>
-const richEditor = document.getElementById("richEditor");
-const ditaFromRich = document.getElementById("ditaFromRich");
+   <script>
+const proEditor = document.getElementById("proEditor");
+const proDITA = document.getElementById("proDITA");
 
-// Function to convert HTML to DITA XML
-function htmlToDITA(node) {
-    let dita = "";
-    node.childNodes.forEach(child => {
-        if (child.nodeType === 3) { // text node
-            dita += child.textContent.trim() ? `<p>${child.textContent.trim()}</p>\n` : "";
-        } else if (child.nodeType === 1) { // element node
-            switch(child.tagName.toLowerCase()) {
-                case 'h1': dita += `<title>${child.textContent}</title>\n`; break;
-                case 'h2': dita += `<title>${child.textContent}</title>\n`; break;
-                case 'h3': dita += `<title>${child.textContent}</title>\n`; break;
-                case 'p': dita += `<p>${child.textContent}</p>\n`; break;
-                case 'ul':
-                    dita += "<ul>\n" + Array.from(child.children).map(li => `<li>${li.textContent}</li>`).join("\n") + "\n</ul>\n";
-                    break;
-                case 'ol':
-                    dita += "<ol>\n" + Array.from(child.children).map(li => `<li>${li.textContent}</li>`).join("\n") + "\n</ol>\n";
-                    break;
-                case 'pre':
-                case 'code':
-                    dita += `<codeblock>${child.textContent}</codeblock>\n`; break;
-                case 'div':
-                    dita += htmlToDITA(child); break;
-                default:
-                    dita += htmlToDITA(child);
-            }
-        }
-    });
-    return dita;
+function updateProDITA() {
+    // Clone the original skeleton
+    const title = proEditor.querySelector('[data-node="title"]')?.innerText || '';
+    const p1 = proEditor.querySelector('[data-node="p1"]')?.innerText || '';
+    const note1 = proEditor.querySelector('[data-node="note1"]')?.innerText || '';
+    const code1 = proEditor.querySelector('[data-node="code1"]')?.innerText || '';
+
+    const ditaXML = `<topic id="generated-topic">
+    <title>${title}</title>
+    <p>${p1}</p>
+    <note>${note1}</note>
+    <codeblock>${code1}</codeblock>
+</topic>`;
+
+    proDITA.value = ditaXML;
 }
 
-// Update DITA XML live
-richEditor.addEventListener("input", () => {
-    const ditaXML = `<topic id="generated-topic">\n${htmlToDITA(richEditor)}\n</topic>`;
-    ditaFromRich.value = ditaXML;
-});
+// Bind all changes in the rich editor
+proEditor.addEventListener("input", updateProDITA);
 
 // Download function
-function downloadRichDITA() {
-    const blob = new Blob([ditaFromRich.value], { type: "text/xml" });
+function downloadProDITA() {
+    const blob = new Blob([proDITA.value], { type: "text/xml" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "rich-text-to-dita.xml";
+    link.download = "professional-dita.xml";
     link.click();
 }
+
+// Initialize
+updateProDITA();
 </script>
 </body>
 </html>
