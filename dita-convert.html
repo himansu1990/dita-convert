@@ -23,24 +23,9 @@ textarea { width:50%; height:400px; padding:10px; font-family:monospace; resize:
 <body>
 
 <h1>Professional DITA Studio</h1>
-
-<!-- ---------- File Upload Section ---------- -->
-<h2>Upload DITA XML</h2>
-<input type="file" id="ditaFile" accept=".xml,.dita">
-<br>
-<button onclick="convertDITA()">Convert</button>
-<button onclick="downloadPDF('output','dita-output.pdf')">Download as PDF</button>
-<button onclick="downloadHTML('output','dita-output.html')">Download as HTML</button>
 <div id="output" class="output-container"></div>
 
-<!-- ---------- Live XML Editor ---------- -->
-<h2>Live DITA Editor</h2>
-<div class="editor-container">
-    <textarea id="ditaTextarea" placeholder="Type or paste DITA XML here..."></textarea>
-    <div id="liveOutput" class="output-container"></div>
-</div>
-<button onclick="downloadPDF('liveOutput','live-dita-output.pdf')">Download Live Output PDF</button>
-<button onclick="downloadHTML('liveOutput','live-dita-output.html')">Download Live Output HTML</button>
+
 
 <!-- ---------- Advanced Rich Text Editor ---------- -->
 <h2>Rich Text Editor → Professional DITA XML</h2>
@@ -68,103 +53,10 @@ textarea { width:50%; height:400px; padding:10px; font-family:monospace; resize:
     <textarea id="advancedDITA" readonly style="width:50%; height:400px; padding:10px; font-family:monospace;"></textarea>
 </div>
 <button onclick="downloadAdvancedDITA()">Download Advanced DITA XML</button>
-<button onclick="downloadPDF('advancedEditor','advanced-dita.pdf')">Download PDF</button>
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 <script>
-// -------------------- DITA File Upload --------------------
-let renderedHTML = "";
-let currentFileName = "dita-output";
-
-function convertDITA() {
-    const fileInput = document.getElementById('ditaFile');
-    if(!fileInput.files.length){ alert("Please select a DITA XML file first."); return; }
-    currentFileName = fileInput.files[0].name.replace(/\.[^/.]+$/,"");
-    const reader = new FileReader();
-    reader.onload = function(e){
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(e.target.result,"application/xml");
-        if(xmlDoc.getElementsByTagName("parsererror").length){ alert("Invalid XML file."); return; }
-        renderedHTML = transformDITA(xmlDoc);
-        document.getElementById("output").innerHTML = renderedHTML;
-    };
-    reader.readAsText(fileInput.files[0]);
-}
-
-function transformDITA(xmlDoc){
-    let html="";
-    const root = xmlDoc.documentElement;
-    const title = root.getElementsByTagName("title")[0];
-    if(title && root.tagName==="topic") html+=`<h1>${title.textContent}</h1>`;
-    let children = Array.from(root.children);
-    if(children.length && children[0].tagName==="title") children.shift();
-    html+=parseDITAChildren(children,2);
-    return html;
-}
-
-function parseDITAChildren(children, headingLevel){
-    let html="";
-    for(let child of children){
-        switch(child.tagName){
-            case "title": html+=`<h${headingLevel}>${child.textContent}</h${headingLevel}>`; break;
-            case "p": html+=`<p>${child.textContent}</p>`; break;
-            case "note": html+=`<div class="note">💡 ${child.textContent}</div>`; break;
-            case "codeblock": html+=`<pre class="codeblock">${child.textContent}</pre>`; break;
-            case "ul": html+="<ul>"+parseDITAChildren(child.children,headingLevel)+"</ul>"; break;
-            case "ol": html+="<ol>"+parseDITAChildren(child.children,headingLevel)+"</ol>"; break;
-            case "li": html+=`<li>${child.textContent}</li>`; break;
-            case "section": html+=parseDITAChildren(child.children,headingLevel); break;
-            case "table": html+="<table>"+parseDITAChildren(child.children,headingLevel)+"</table>"; break;
-            case "tgroup": html+=parseDITAChildren(child.children,headingLevel); break;
-            case "thead": html+="<thead>"+parseDITAChildren(child.children,headingLevel)+"</thead>"; break;
-            case "tbody": html+="<tbody>"+parseDITAChildren(child.children,headingLevel)+"</tbody>"; break;
-            case "row": html+="<tr>"+parseDITAChildren(child.children,headingLevel)+"</tr>"; break;
-            case "entry": html+=`<td>${child.textContent}</td>`; break;
-            case "image": const href=child.getAttribute("href")||""; html+=`<img src="${href}" alt="">`; break;
-            default: html+=parseDITAChildren(child.children,headingLevel);
-        }
-    }
-    return html;
-}
-
-// -------------------- PDF & HTML Download --------------------
-function downloadPDF(elementId, filename){
-    const element=document.getElementById(elementId);
-    if(!element.innerHTML.trim()){ alert("No content to download."); return; }
-    element.style.width="100%";
-    html2pdf().set({
-        margin:[15,15,15,15],
-        filename:filename,
-        image:{type:'jpeg',quality:0.98},
-        html2canvas:{scale:2,useCORS:true},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-    }).from(element).save().then(()=>{ element.style.width=""; });
-}
-
-function downloadHTML(elementId, filename){
-    const element=document.getElementById(elementId);
-    if(!element.innerHTML.trim()){ alert("No content to download."); return; }
-    const blob=new Blob([element.innerHTML],{type:"text/html"});
-    const link=document.createElement("a");
-    link.href=URL.createObjectURL(blob);
-    link.download=filename;
-    link.click();
-}
-
-// -------------------- Live DITA Textarea --------------------
-const textarea = document.getElementById("ditaTextarea");
-const liveOutput = document.getElementById("liveOutput");
-textarea.addEventListener("input",()=>{
-    const xmlText = textarea.value.trim();
-    if(!xmlText){ liveOutput.innerHTML=""; return; }
-    try{
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText,"application/xml");
-        if(xmlDoc.getElementsByTagName("parsererror").length){ liveOutput.innerHTML="<p style='color:red;'>Invalid XML</p>"; return; }
-        liveOutput.innerHTML = transformDITA(xmlDoc);
-    } catch{ liveOutput.innerHTML="<p style='color:red;'>Error parsing XML</p>"; }
-});
 
 // -------------------- Advanced Rich Text Editor --------------------
 const advEditor=document.getElementById("advancedEditor");
