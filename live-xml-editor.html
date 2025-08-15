@@ -31,6 +31,30 @@ textarea { width:50%; height:400px; padding:10px; font-family:monospace; resize:
 <button onclick="downloadHTML('liveOutput','live-dita-output.html')">Download Live Output HTML</button>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 <script>
+// -------------------- PDF & HTML Download --------------------
+function downloadPDF(elementId, filename){
+    const element=document.getElementById(elementId);
+    if(!element.innerHTML.trim()){ alert("No content to download."); return; }
+    element.style.width="100%";
+    html2pdf().set({
+        margin:[15,15,15,15],
+        filename:filename,
+        image:{type:'jpeg',quality:0.98},
+        html2canvas:{scale:2,useCORS:true},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+    }).from(element).save().then(()=>{ element.style.width=""; });
+}
+
+function downloadHTML(elementId, filename){
+    const element=document.getElementById(elementId);
+    if(!element.innerHTML.trim()){ alert("No content to download."); return; }
+    const blob=new Blob([element.innerHTML],{type:"text/html"});
+    const link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download=filename;
+    link.click();
+}
+    
   // -------------------- Live DITA Textarea --------------------
 const textarea = document.getElementById("ditaTextarea");
 const liveOutput = document.getElementById("liveOutput");
