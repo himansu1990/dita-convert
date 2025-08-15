@@ -71,6 +71,8 @@ button:hover {
     padding: 20px;
     border-radius: 6px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* New layout for live editor */
@@ -107,7 +109,7 @@ textarea {
 
 <div id="output" class="output-container" style="margin-top:20px;"></div>
 
-<!-- New Live Editor Feature -->
+<!-- Live Editor Feature -->
 <h2>Live DITA XML Editor</h2>
 <div class="editor-container">
     <textarea id="ditaTextarea" placeholder="Type or paste DITA XML here..."></textarea>
@@ -220,27 +222,22 @@ function parseDITAChildren(children, headingLevel) {
     return html;
 }
 
+// ------------------- PDF & HTML Download -------------------
 function downloadPDF() {
-    if (!renderedHTML) {
-        alert("Please convert a file first.");
-        return;
-    }
+    if (!renderedHTML) { alert("Please convert a file first."); return; }
     const element = document.getElementById("output");
-    const opt = {
-        margin: [10, 20, 10, 20],
+    element.style.width = "100%";
+    html2pdf().set({
+        margin: [10,10,10,10],
         filename: currentFileName + '.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
+    }).from(element).save().then(()=>{ element.style.width = ""; });
 }
 
 function downloadHTML() {
-    if (!renderedHTML) {
-        alert("Please convert a file first.");
-        return;
-    }
+    if (!renderedHTML) { alert("Please convert a file first."); return; }
     const blob = new Blob([renderedHTML], { type: "text/html" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -248,16 +245,14 @@ function downloadHTML() {
     link.click();
 }
 
-// ------------------- New Live Editor Feature -------------------
+// ------------------- Live Editor Feature -------------------
 const textarea = document.getElementById("ditaTextarea");
 const liveOutput = document.getElementById("liveOutput");
+let liveRenderedHTML = "";
 
 textarea.addEventListener("input", () => {
     const xmlText = textarea.value.trim();
-    if (!xmlText) {
-        liveOutput.innerHTML = "";
-        return;
-    }
+    if (!xmlText) { liveOutput.innerHTML = ""; return; }
     try {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "application/xml");
@@ -267,38 +262,32 @@ textarea.addEventListener("input", () => {
         }
         liveRenderedHTML = transformDITA(xmlDoc);
         liveOutput.innerHTML = liveRenderedHTML;
-    } catch (err) {
+    } catch {
         liveOutput.innerHTML = "<p style='color:red;'>Error parsing XML</p>";
     }
 });
 
 function downloadLivePDF() {
-    if (!liveOutput.innerHTML) {
-        alert("No live output to download.");
-        return;
-    }
-    const opt = {
-        margin: [10, 20, 10, 20],
+    if (!liveRenderedHTML) { alert("No live output to download."); return; }
+    const element = document.getElementById("liveOutput");
+    element.style.width = "100%";
+    html2pdf().set({
+        margin: [10,10,10,10],
         filename: 'live-dita-output.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(liveOutput).save();
+    }).from(element).save().then(()=>{ element.style.width = ""; });
 }
 
 function downloadLiveHTML() {
-    if (!liveOutput.innerHTML) {
-        alert("No live output to download.");
-        return;
-    }
-    const blob = new Blob([liveOutput.innerHTML], { type: "text/html" });
+    if (!liveRenderedHTML) { alert("No live output to download."); return; }
+    const blob = new Blob([liveRenderedHTML], { type: "text/html" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "live-dita-output.html";
     link.click();
 }
 </script>
-
 </body>
 </html>
