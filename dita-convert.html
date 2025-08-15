@@ -108,6 +108,15 @@ textarea {
 <button onclick="downloadLivePDF()">Download Live Output as PDF</button>
 <button onclick="downloadLiveHTML()">Download Live Output as HTML</button>
 
+<h2>Rich Text Editor → DITA XML</h2>
+<div class="editor-container">
+    <div id="richEditor" contenteditable="true" style="width:50%; height:400px; padding:10px; border:1px solid #ccc; overflow:auto; font-family:Arial;">
+        Type here...
+    </div>
+    <textarea id="ditaFromRich" readonly style="width:50%; height:400px; padding:10px; font-family:monospace;"></textarea>
+</div>
+<button onclick="downloadRichDITA()">Download DITA XML</button>    
+    
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 <script>
 let renderedHTML = "";
@@ -222,6 +231,56 @@ textarea.addEventListener("input", () => {
         liveOutput.innerHTML = liveRenderedHTML;
     } catch { liveOutput.innerHTML = "<p style='color:red;'>Error parsing XML</p>"; }
 });
+</script>
+    <script>
+const richEditor = document.getElementById("richEditor");
+const ditaFromRich = document.getElementById("ditaFromRich");
+
+// Function to convert HTML to DITA XML
+function htmlToDITA(node) {
+    let dita = "";
+    node.childNodes.forEach(child => {
+        if (child.nodeType === 3) { // text node
+            dita += child.textContent.trim() ? `<p>${child.textContent.trim()}</p>\n` : "";
+        } else if (child.nodeType === 1) { // element node
+            switch(child.tagName.toLowerCase()) {
+                case 'h1': dita += `<title>${child.textContent}</title>\n`; break;
+                case 'h2': dita += `<title>${child.textContent}</title>\n`; break;
+                case 'h3': dita += `<title>${child.textContent}</title>\n`; break;
+                case 'p': dita += `<p>${child.textContent}</p>\n`; break;
+                case 'ul':
+                    dita += "<ul>\n" + Array.from(child.children).map(li => `<li>${li.textContent}</li>`).join("\n") + "\n</ul>\n";
+                    break;
+                case 'ol':
+                    dita += "<ol>\n" + Array.from(child.children).map(li => `<li>${li.textContent}</li>`).join("\n") + "\n</ol>\n";
+                    break;
+                case 'pre':
+                case 'code':
+                    dita += `<codeblock>${child.textContent}</codeblock>\n`; break;
+                case 'div':
+                    dita += htmlToDITA(child); break;
+                default:
+                    dita += htmlToDITA(child);
+            }
+        }
+    });
+    return dita;
+}
+
+// Update DITA XML live
+richEditor.addEventListener("input", () => {
+    const ditaXML = `<topic id="generated-topic">\n${htmlToDITA(richEditor)}\n</topic>`;
+    ditaFromRich.value = ditaXML;
+});
+
+// Download function
+function downloadRichDITA() {
+    const blob = new Blob([ditaFromRich.value], { type: "text/xml" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "rich-text-to-dita.xml";
+    link.click();
+}
 </script>
 </body>
 </html>
