@@ -40,14 +40,6 @@
         .toolbar-btn:hover {
             background-color: #e5e7eb; /* gray-200 */
         }
-        /* Style for the temporary, hidden div for PDF generation */
-        .pdf-temp-container {
-            position: absolute;
-            left: -9999px;
-            width: 210mm; /* A4 width */
-            padding: 10mm;
-            background-color: #fff;
-        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col p-4 md:p-8">
@@ -388,7 +380,7 @@
                 chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, p, ul, ol, strong, and em tags. The prompt is: ${userPrompt}` }] });
                 const payload = { contents: chatHistory };
                 const apiKey = "AIzaSyDdj6VoNhgKHIh3myG_UPzfXseXRLPUldE" 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
                 
                 let response;
                 let retryDelay = 1000;
@@ -522,16 +514,45 @@
             // Use a loading message to provide feedback
             richTextEditor.innerHTML = '<h2>Generating PDF... Please wait.</h2>';
             downloadPdfBtn.disabled = true;
-
-            // Create a temporary, hidden div with explicit styling
-            const tempDiv = document.createElement('div');
-            tempDiv.classList.add('pdf-temp-container');
-            tempDiv.innerHTML = originalContent;
-            document.body.appendChild(tempDiv);
             
-            // Generate PDF and then clean up
+            // Build a complete HTML document string for the PDF
+            const pdfHtml = `
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>PDF Document</title>
+                    <style>
+                        body {
+                            font-family: 'Inter', sans-serif;
+                            font-size: 12pt;
+                            line-height: 1.5;
+                            color: #1f2937; /* gray-900 */
+                            padding: 20mm;
+                        }
+                        h1 { font-size: 24pt; font-weight: 700; margin-bottom: 1rem; }
+                        h2 { font-size: 20pt; font-weight: 600; margin-bottom: 0.75rem; }
+                        h3 { font-size: 16pt; font-weight: 600; margin-bottom: 0.5rem; }
+                        ul, ol { margin-bottom: 1rem; padding-left: 20px; }
+                        strong, b { font-weight: 700; }
+                        em, i { font-style: italic; }
+                        blockquote {
+                            border-left: 4px solid #d1d5db; /* gray-300 */
+                            padding-left: 1rem;
+                            margin: 1rem 0;
+                            color: #6b7280; /* gray-500 */
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${originalContent}
+                </body>
+                </html>
+            `;
+            
+            // Generate PDF from the self-contained HTML string
             html2pdf()
-                .from(tempDiv)
+                .from(pdfHtml)
                 .set({
                     margin: 10,
                     filename: 'document.pdf',
@@ -543,14 +564,12 @@
                     // Restore original content and button state after successful save
                     richTextEditor.innerHTML = originalContent;
                     downloadPdfBtn.disabled = false;
-                    document.body.removeChild(tempDiv);
                 })
                 .catch(error => {
                     console.error("PDF generation failed:", error);
                     // Restore original content and show an error message
                     richTextEditor.innerHTML = originalContent + `<p class="text-red-500 mt-4">Failed to generate PDF. Please try again.</p>`;
                     downloadPdfBtn.disabled = false;
-                    document.body.removeChild(tempDiv);
                 });
         });
 
