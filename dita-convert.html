@@ -157,30 +157,26 @@
             const doc = parser.parseFromString(htmlString, 'text/html');
             const body = doc.body;
 
-            let ditaXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-                          '<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">\n' +
-                          '<topic id="my-topic">\n';
-
-            const sections = body.querySelectorAll('h1, h2, h3, h4, h5, h6');
-            if (sections.length > 0) {
-                ditaXml += `  <title>${sections[0].textContent}</title>\n`;
-            } else {
-                ditaXml += '  <title>New Topic</title>\n';
-            }
-
-            ditaXml += '  <body>\n';
+            // Find the first heading to use as the topic title
+            const firstHeading = body.querySelector('h1, h2, h3, h4, h5, h6');
+            const topicTitle = firstHeading ? firstHeading.textContent : 'New Topic';
+            
+            let ditaXml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+                          `<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">\n` +
+                          `<topic id="my-topic">\n` +
+                          `  <title>${topicTitle}</title>\n` +
+                          `  <body>\n`;
 
             // Process all child nodes of the body
             body.childNodes.forEach(node => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     let xmlContent = '';
                     switch (node.tagName.toLowerCase()) {
-                        case 'h1': // Convert h1 to a title
+                        case 'h1':
                         case 'h2':
                         case 'h3':
-                            // The first heading is already used as the topic title.
-                            // Subsequent headings should be sections.
-                            if (node === sections[0]) {
+                            // The first heading is already used as the topic title, so we skip it.
+                            if (node === firstHeading) {
                                 return;
                             }
                             xmlContent = `    <section>\n      <title>${node.textContent}</title>\n    </section>\n`;
@@ -265,7 +261,7 @@
             let htmlContent = '';
 
             const title = topic.querySelector('title');
-            if (title) {
+            if (title && title.textContent !== 'New Topic') {
                 htmlContent += `<h1>${title.textContent}</h1>`;
             }
 
