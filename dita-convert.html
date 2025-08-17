@@ -379,7 +379,7 @@
                 const chatHistory = [];
                 chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, p, ul, ol, strong, and em tags. The prompt is: ${userPrompt}` }] });
                 const payload = { contents: chatHistory };
-                const apiKey = "AIzaSyDdj6VoNhgKHIh3myG_UPzfXseXRLPUldE" 
+                const apiKey = "" 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 
                 let response;
@@ -509,14 +509,21 @@
 
         // Download PDF
         downloadPdfBtn.addEventListener('click', () => {
-            const element = richTextEditor;
+            // Create a temporary div to ensure clean PDF generation
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = richTextEditor.innerHTML;
+            document.body.appendChild(tempDiv);
+            
             // Use html2pdf.js to generate and download the PDF
-            html2pdf().from(element).set({
+            html2pdf().from(tempDiv).set({
                 margin: 10,
                 filename: 'document.pdf',
                 html2canvas: { scale: 2 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).save();
+            }).save().finally(() => {
+                // Remove the temporary div after generation is complete
+                document.body.removeChild(tempDiv);
+            });
         });
 
         // Download Markdown
