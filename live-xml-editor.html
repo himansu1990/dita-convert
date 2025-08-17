@@ -1,200 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Live DITA Editor Free + Gemini AI</title>
-<style>
-body { font-family: 'Times New Roman', serif; margin:0; padding:20px; background:#f7f7f7;}
-h1,h2,h3,h4,h5 { color:#222; margin:10px 0;}
-p { line-height:1.6; color:#333; margin:6px 0;}
-.note { display:block; background:#fff8d1; border-left:6px solid #f4c430; padding:10px; margin:10px 0; font-style:italic;}
-.codeblock, pre { 
-    display:block; 
-    background:#272822; 
-    color:#f8f8f2; 
-    padding:10px; 
-    overflow-x:auto; 
-    border-radius:4px; 
-    font-family:monospace; 
-    white-space:pre-wrap; 
-    word-wrap:break-word; 
-    margin:10px 0;
-}
-table { border-collapse:collapse; margin:15px 0; width:100%; }
-table, th, td { border:1px solid #888;}
-th, td { padding:8px 12px; text-align:left; font-size:14px;}
-img { max-width:100%; margin:10px 0;}
-button { margin:5px 2px; padding:8px 12px; background:#4CAF50; color:#fff; border:none; cursor:pointer; border-radius:4px;}
-button:hover { background:#45a049;}
-.output-container { 
-    background:white; 
-    padding:20px; 
-    border-radius:6px; 
-    box-shadow:0 2px 6px rgba(0,0,0,0.2); 
-    width:100%; 
-    box-sizing:border-box; 
-    margin-top:20px;
-    page-break-inside:auto;
-}
-.output-container * { 
-    page-break-inside: avoid; 
-    page-break-after: auto;
-}
-.editor-container { display:flex; gap:20px; margin-top:20px;}
-textarea { width:50%; height:400px; padding:10px; font-family:monospace; resize:vertical;}
-#promptBox { width:60%; padding:8px; margin-top:10px; }
-</style>
+  <meta charset="UTF-8">
+  <title>DITA Editor (with Gemini AI)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 400px;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: vertical;
+    }
+    .editor, .output {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .generate { background: #4CAF50; color: white; }
+    .copy { background: #2196F3; color: white; }
+    .download { background: #FF9800; color: white; }
+  </style>
 </head>
 <body>
-<!-- ---------- Live XML Editor ---------- -->
-<h2>Live DITA Editor (with Gemini AI)</h2>
+  <h1>DITA Editor (with Gemini AI)</h1>
+  <div class="container">
+    <!-- Left side editor -->
+    <div class="editor">
+      <label><b>Enter Prompt</b></label>
+      <textarea id="inputText" placeholder="Type your prompt or paste DITA XML here..."></textarea>
+      <div class="buttons">
+        <button class="generate" onclick="generateDITA()">Generate DITA XML</button>
+      </div>
+    </div>
 
-<!-- AI Prompt Input -->
-<div>
-  <input type="text" id="promptBox" placeholder="Type a prompt to generate DITA XML..." />
-  <button onclick="generateXML()">Generate XML</button>
-</div>
+    <!-- Right side output -->
+    <div class="output">
+      <label><b>DITA XML Output</b></label>
+      <textarea id="outputText" placeholder="DITA XML output will appear here..."></textarea>
+      <div class="buttons">
+        <button class="copy" onclick="copyOutput()">Copy</button>
+        <button class="download" onclick="downloadOutput()">Download</button>
+      </div>
+    </div>
+  </div>
 
-<div class="editor-container">
-    <textarea id="ditaTextarea" placeholder="Type or paste DITA XML here..."></textarea>
-    <div id="liveOutput" class="output-container"></div>
-</div>
-<button onclick="downloadPDF('liveOutput','live-dita-output.pdf')">Download Live Output PDF</button>
-<button onclick="downloadHTML('liveOutput','live-dita-output.html')">Download Live Output HTML</button>
+  <script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
-<script>
-// -------------------- DITA Transform --------------------
-function transformDITA(xmlDoc){
-    let html="";
-    const root = xmlDoc.documentElement;
-    const title = root.getElementsByTagName("title")[0];
-    if(title && root.tagName==="topic") html+=`<h1>${title.textContent}</h1>`;
-    let children = Array.from(root.children);
-    if(children.length && children[0].tagName==="title") children.shift();
-    html+=parseDITAChildren(children,2);
-    return html;
-}
+    const API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg"; // 🔑 Replace with your real key
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-function parseDITAChildren(children, headingLevel){
-    let html="";
-    for(let child of children){
-        switch(child.tagName){
-            case "title": html+=`<h${headingLevel}>${child.textContent}</h${headingLevel}>`; break;
-            case "p": html+=`<p>${child.textContent}</p>`; break;
-            case "note": html+=`<div class="note">💡 ${child.textContent}</div>`; break;
-            case "codeblock": html+=`<pre class="codeblock">${child.textContent}</pre>`; break;
-            case "ul": html+="<ul>"+parseDITAChildren(child.children,headingLevel)+"</ul>"; break;
-            case "ol": html+="<ol>"+parseDITAChildren(child.children,headingLevel)+"</ol>"; break;
-            case "li": html+=`<li>${child.textContent}</li>`; break;
-            case "section": html+=parseDITAChildren(child.children,headingLevel); break;
-            case "table": html+="<table>"+parseDITAChildren(child.children,headingLevel)+"</table>"; break;
-            case "tgroup": html+=parseDITAChildren(child.children,headingLevel); break;
-            case "thead": html+="<thead>"+parseDITAChildren(child.children,headingLevel)+"</thead>"; break;
-            case "tbody": html+="<tbody>"+parseDITAChildren(child.children,headingLevel)+"</tbody>"; break;
-            case "row": html+="<tr>"+parseDITAChildren(child.children,headingLevel)+"</tr>"; break;
-            case "entry": html+=`<td>${child.textContent}</td>`; break;
-            case "image": const href=child.getAttribute("href")||""; html+=`<img src="${href}" alt="">`; break;
-            default: html+=parseDITAChildren(child.children,headingLevel);
-        }
+    async function generateDITA() {
+      const input = document.getElementById("inputText").value.trim();
+      if (!input) {
+        alert("Please enter a prompt.");
+        return;
+      }
+
+      try {
+        const result = await model.generateContent(input);
+        const response = await result.response;
+        const text = response.text();
+
+        document.getElementById("outputText").value = text || "No output from Gemini.";
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Error generating output. Check console.");
+      }
     }
-    return html;
-}
 
-// -------------------- PDF & HTML Download --------------------
-function downloadPDF(elementId, filename){
-    const element=document.getElementById(elementId);
-    if(!element.innerHTML.trim()){ alert("No content to download."); return; }
-    element.style.width="100%";
-    html2pdf().set({
-        margin:[15,15,15,15],
-        filename:filename,
-        image:{type:'jpeg',quality:0.98},
-        html2canvas:{scale:2,useCORS:true},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-    }).from(element).save().then(()=>{ element.style.width=""; });
-}
-
-function downloadHTML(elementId, filename){
-    const element=document.getElementById(elementId);
-    if(!element.innerHTML.trim()){ alert("No content to download."); return; }
-
-    const styles = document.querySelector("style").outerHTML;
-    const fullHTML = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${filename}</title>
-      ${styles}
-    </head>
-    <body>
-      ${element.innerHTML}
-    </body>
-    </html>`;
-    
-    const blob=new Blob([fullHTML],{type:"text/html"});
-    const link=document.createElement("a");
-    link.href=URL.createObjectURL(blob);
-    link.download=filename;
-    link.click();
-}
-
-// -------------------- Live DITA Preview --------------------
-const textarea = document.getElementById("ditaTextarea");
-const liveOutput = document.getElementById("liveOutput");
-textarea.addEventListener("input",()=>{
-    const xmlText = textarea.value.trim();
-    if(!xmlText){ liveOutput.innerHTML=""; return; }
-    try{
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText,"application/xml");
-        if(xmlDoc.getElementsByTagName("parsererror").length){ liveOutput.innerHTML="<p style='color:red;'>Invalid XML</p>"; return; }
-        liveOutput.innerHTML = transformDITA(xmlDoc);
-    } catch{ liveOutput.innerHTML="<p style='color:red;'>Error parsing XML</p>"; }
-});
-
-// -------------------- Gemini AI Integration --------------------
-async function generateXML(){
-    const prompt=document.getElementById("promptBox").value.trim();
-    if(!prompt){ alert("Please enter a prompt."); return; }
-
-    try {
-        const apiKey = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg"; // replace with your Gemini API key
-        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+apiKey, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: `Generate a valid DITA XML topic. Prompt: ${prompt}` }] }]
-            })
-        });
-
-        const data = await response.json();
-        console.log("Gemini response:", data); // debug full response in console
-
-        let generatedXML = "";
-
-        if (data.candidates && data.candidates.length > 0) {
-            // Try different formats safely
-            if (data.candidates[0].content && data.candidates[0].content.parts) {
-                generatedXML = data.candidates[0].content.parts.map(p => p.text || "").join("\n");
-            } else if (data.candidates[0].output_text) {
-                generatedXML = data.candidates[0].output_text;
-            }
-        }
-
-        if (generatedXML && generatedXML.trim()) {
-            textarea.value = generatedXML;
-            textarea.dispatchEvent(new Event("input")); // refresh preview
-        } else {
-            alert("No valid XML output from Gemini. Check console log for details.");
-        }
-
-    } catch (err) {
-        console.error(err);
-        alert("Error generating XML from Gemini API.");
+    function copyOutput() {
+      const output = document.getElementById("outputText");
+      output.select();
+      document.execCommand("copy");
+      alert("Output copied to clipboard!");
     }
-}
-</script>
+
+    function downloadOutput() {
+      const output = document.getElementById("outputText").value;
+      const blob = new Blob([output], { type: "text/xml" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dita-output.xml";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ✅ New Feature: Trigger Gemini on pressing ENTER
+    document.getElementById("inputText").addEventListener("keydown", function(event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault(); // Prevents new line
+        generateDITA();
+      }
+    });
+  </script>
 </body>
 </html>
