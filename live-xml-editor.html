@@ -36,17 +36,31 @@
     <div id="liveOutput" class="output-container"></div>
   </div>
 
-  <button onclick="downloadPDF('liveOutput','live-dita-output.pdf')">Download Live Output PDF</button>
-  <button onclick="downloadHTML('liveOutput','live-dita-output.html')">Download Live Output HTML</button>
+  <button onclick="downloadPDF('liveOutput')">Download Live Output PDF</button>
+  <button onclick="downloadHTML('liveOutput')">Download Live Output HTML</button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <script>
+    // -------------------- Helper: Get Safe Filename --------------------
+    function getSafeFilename(prompt, extension){
+      let name = prompt || "live-dita-output";
+      name = name.replace(/[<>:"/\\|?*]+/g, "").trim(); // remove invalid filename chars
+      if(!name) name = "live-dita-output";
+      return name + extension;
+    }
+
     // -------------------- DITA Transform --------------------
     function transformDITA(xmlDoc){
       let html="";
       const root = xmlDoc.documentElement;
       const title = root.getElementsByTagName("title")[0];
-      if(title && root.tagName==="topic") html+=`<h1>${title.textContent}</h1>`;
+      if(title && root.tagName==="topic"){
+        html+=`<h1>${title.textContent}</h1>`;
+      } else {
+        // fallback: use the prompt as title if no <title> in XML
+        const prompt = document.getElementById("promptBox").value.trim();
+        if(prompt) html+=`<h1>${prompt}</h1>`;
+      }
       let children = Array.from(root.children);
       if(children.length && children[0].tagName==="title") children.shift();
       html+=parseDITAChildren(children,2);
@@ -79,12 +93,14 @@
     }
 
     // -------------------- PDF & HTML Download --------------------
-    function downloadPDF(elementId, filename){
+    function downloadPDF(elementId){
       const element=document.getElementById(elementId);
       if(!element.innerHTML.trim()){
         alert("No content to download.");
         return;
       }
+      const prompt = document.getElementById("promptBox").value.trim();
+      const filename = getSafeFilename(prompt,".pdf");
       element.style.width="100%";
       html2pdf().set({
         margin:[15,15,15,15],
@@ -97,12 +113,14 @@
       });
     }
 
-    function downloadHTML(elementId, filename){
+    function downloadHTML(elementId){
       const element=document.getElementById(elementId);
       if(!element.innerHTML.trim()){
         alert("No content to download.");
         return;
       }
+      const prompt = document.getElementById("promptBox").value.trim();
+      const filename = getSafeFilename(prompt,".html");
       const blob=new Blob([element.innerHTML],{type:"text/html"});
       const link=document.createElement("a");
       link.href=URL.createObjectURL(blob);
