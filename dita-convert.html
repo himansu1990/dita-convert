@@ -364,8 +364,7 @@
             const userPrompt = aiPrompt.value.trim();
             if (!userPrompt) {
                 // Use a custom message box instead of alert()
-                const message = 'Please enter a prompt before generating content.';
-                richTextEditor.innerHTML = `<p class="text-red-500">${message}</p>`;
+                richTextEditor.innerHTML = `<p class="text-red-500">Please enter a prompt before generating content.</p>`;
                 return;
             }
 
@@ -373,14 +372,15 @@
             generateBtn.textContent = 'Generating...';
             generateBtn.disabled = true;
             generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            richTextEditor.innerHTML = '<p class="text-gray-500 italic">Generating content, please wait...</p>';
 
             try {
                 // Instruct the AI to respond in formatted HTML
                 const chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, p, ul, ol, strong, and em tags. The prompt is: ${userPrompt}` }] });
+                chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, h2, p, ul, ol, strong, and em tags. The prompt is: ${userPrompt}` }] });
                 const payload = { contents: chatHistory };
-                const apiKey = "AIzaSyDdj6VoNhgKHIh3myG_UPzfXseXRLPUldE" 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+                const apiKey = "AIzaSyDdj6VoNhgKHIh3myG_UPzfXseXRLPUldE";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
                 let response;
                 let retryDelay = 1000;
@@ -423,7 +423,7 @@
 
                 } else {
                     console.error("API response did not contain content.");
-                    richTextEditor.innerHTML = '<p class="text-red-500">Sorry, I couldn\'t generate content. Please try again.</p>';
+                    richTextEditor.innerHTML = '<p class="text-red-500">Sorry, I couldn\'t generate content. This can happen with vague prompts. Please try a different prompt or check your network connection.</p>';
                     xmlEditor.value = '';
                 }
 
