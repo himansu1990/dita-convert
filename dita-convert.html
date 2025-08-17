@@ -524,24 +524,18 @@
                     <title>PDF Document</title>
                     <style>
                         body {
-                            font-family: 'Inter', sans-serif;
+                            font-family: sans-serif;
                             font-size: 12pt;
                             line-height: 1.5;
-                            color: #1f2937; /* gray-900 */
+                            color: #000;
                             padding: 20mm;
                         }
-                        h1 { font-size: 24pt; font-weight: 700; margin-bottom: 1rem; }
-                        h2 { font-size: 20pt; font-weight: 600; margin-bottom: 0.75rem; }
-                        h3 { font-size: 16pt; font-weight: 600; margin-bottom: 0.5rem; }
+                        h1 { font-size: 24pt; margin-bottom: 1rem; }
+                        h2 { font-size: 20pt; margin-bottom: 0.75rem; }
+                        h3 { font-size: 16pt; margin-bottom: 0.5rem; }
                         ul, ol { margin-bottom: 1rem; padding-left: 20px; }
-                        strong, b { font-weight: 700; }
+                        strong, b { font-weight: bold; }
                         em, i { font-style: italic; }
-                        blockquote {
-                            border-left: 4px solid #d1d5db; /* gray-300 */
-                            padding-left: 1rem;
-                            margin: 1rem 0;
-                            color: #6b7280; /* gray-500 */
-                        }
                     </style>
                 </head>
                 <body>
@@ -556,7 +550,12 @@
                 .set({
                     margin: 10,
                     filename: 'document.pdf',
-                    html2canvas: { scale: 2, logging: true },
+                    html2canvas: { 
+                        scale: 2, 
+                        logging: true,
+                        // Enable useCORS to handle images properly if they are from different domains
+                        useCORS: true
+                    },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 })
                 .save()
