@@ -1,135 +1,435 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DITA Live Editor — Rich text ↔ DITA XML</title>
-  <!-- Quill (Rich text) -->
-  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-  <!-- Ace (XML editor) -->
-  <style>
-    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; padding:0; height:100vh; display:flex; flex-direction:column; }
-    header { padding:12px 16px; background:#f4f6f8; border-bottom:1px solid #e6e9ec; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    .container { display:flex; flex:1; gap:12px; padding:12px; box-sizing:border-box; }
-    .panel { flex:1; display:flex; flex-direction:column; min-width:0; }
-    .panel .title { font-weight:600; margin-bottom:8px; }
-    #editor { height: calc(100% - 36px); background:white; border:1px solid #ddd; border-radius:6px; overflow:auto; }
-    #xmlEditor { height: calc(100% - 36px); border:1px solid #ddd; border-radius:6px; }
-    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    input[type=text] { padding:8px 10px; border-radius:6px; border:1px solid #ccc; min-width:260px; }
-    button.generate, button.download { background: #4CAF50; color:white; border: none; padding:10px 14px; border-radius:6px; cursor:pointer; font-weight:600; }
-    button[disabled] { opacity:0.6; cursor:not-allowed; }
-    .small { font-size:12px; color:#666; }
-    footer { padding:8px 12px; font-size:13px; color:#666; background:#fafafa; border-top:1px solid #eee; }
-    .row { display:flex; gap:12px; align-items:center; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DITA Editor</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- html2pdf.js library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom styles for the rich text editor placeholder */
+        [contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: #9ca3af; /* Tailwind's gray-400 */
+            pointer-events: none;
+            display: block;
+        }
+        /* Simple icon styling for the toolbar buttons */
+        .toolbar-btn {
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s;
+            line-height: 1;
+        }
+        .toolbar-btn:hover {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+    </style>
 </head>
-<body>
-  <header>
-    <div style="font-weight:700">DITA Live Editor</div>
-    <div class="controls">
-      <input id="promptInput" type="text" placeholder="Type prompt for Gemini..." />
-      <button id="generateBtn" class="generate">Generate</button>
-      <button id="downloadHtmlBtn" class="download">Download HTML</button>
-      <button id="downloadPdfBtn" class="download">Download PDF</button>
-      <div class="small">Tip: Both editors are editable. Edits sync both ways.</div>
+<body class="bg-gray-100 min-h-screen flex flex-col p-4 md:p-8">
+    <header class="text-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">DITA XML Editor</h1>
+    </header>
+
+    <!-- AI Prompt Section -->
+    <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Generate with AI</h2>
+        <div class="flex flex-col md:flex-row gap-4 items-center">
+            <textarea id="aiPrompt"
+                      class="flex-1 w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      rows="3"
+                      placeholder="Type a prompt for the AI, e.g., 'Write a short user guide for an espresso machine.'"></textarea>
+            <button id="generateBtn"
+                    class="bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 min-w-[120px]">
+                Generate
+            </button>
+        </div>
     </div>
-  </header>
 
-  <div class="container">
-    <div class="panel">
-      <div class="title">Rich Text Editor</div>
-      <div id="editor"></div>
+    <main class="flex-1 flex flex-col md:flex-row gap-4 mb-6">
+        <!-- Rich Text Editor Section -->
+        <div class="flex-1 bg-white rounded-lg shadow-md p-6 border border-gray-200 flex flex-col">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Rich Text Editor</h2>
+            
+            <!-- Rich Text Editor Toolbar -->
+            <div id="toolbar" class="bg-gray-100 p-2 rounded-t-lg border-b border-gray-300 flex flex-wrap gap-1 mb-2">
+                <button class="toolbar-btn" data-command="bold"><b>B</b></button>
+                <button class="toolbar-btn" data-command="italic"><i>I</i></button>
+                <button class="toolbar-btn" data-command="underline"><u>U</u></button>
+                <button class="toolbar-btn" data-command="insertUnorderedList" title="Unordered List">&#x2022; List</button>
+                <button class="toolbar-btn" data-command="insertOrderedList" title="Ordered List">1. List</button>
+            </div>
+            
+            <!-- The contenteditable div serves as the rich text editor -->
+            <div id="richTextEditor"
+                 class="flex-1 w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 overflow-auto"
+                 contenteditable="true"
+                 data-placeholder="Start typing or pasting content here.">
+            </div>
+        </div>
+
+        <!-- DITA XML Viewer Section -->
+        <div class="flex-1 bg-gray-900 text-gray-300 rounded-lg shadow-md p-6 border border-gray-700 flex flex-col">
+            <h2 class="text-lg font-semibold text-white mb-4">DITA XML Code</h2>
+            <!-- The textarea displays the DITA XML code -->
+            <textarea id="xmlEditor"
+                      class="flex-1 w-full h-full bg-gray-800 text-gray-300 p-4 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-gray-600 resize-none overflow-auto"
+                      placeholder="XML code will appear here."></textarea>
+        </div>
+    </main>
+
+    <!-- Controls Section -->
+    <div class="flex flex-col md:flex-row justify-center items-center gap-4">
+        <!-- Button to download as PDF -->
+        <button id="downloadPdfBtn"
+                class="bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+            Download PDF
+        </button>
+        <!-- Button to download as HTML -->
+        <button id="downloadHtmlBtn"
+                class="bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+            Download HTML
+        </button>
     </div>
 
-    <div class="panel">
-      <div class="title">DITA XML (editable)</div>
-      <div id="xmlEditor"></div>
-    </div>
-  </div>
+    <script>
+        // Get references to the DOM elements
+        const richTextEditor = document.getElementById('richTextEditor');
+        const xmlEditor = document.getElementById('xmlEditor');
+        const aiPrompt = document.getElementById('aiPrompt');
+        const generateBtn = document.getElementById('generateBtn');
+        const toolbar = document.getElementById('toolbar');
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+        const downloadHtmlBtn = document.getElementById('downloadHtmlBtn');
 
-  <footer>
-    <div class="row">
-      <div class="small">Security note:</div>
-      <div class="small">Do NOT publish your API key in client-side code on public sites. Preferred: create a small server endpoint that stores the key and proxies requests to the Gemini API.</div>
-    </div>
-  </footer>
+        // Flag to prevent infinite loops during two-way binding
+        let isUpdating = false;
 
-  <!-- Libraries -->
-  <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.1/ace.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        /**
+         * Converts the HTML content from the rich text editor to DITA XML.
+         * This is a simplified conversion for demonstration purposes.
+         * A more robust solution would require a full DITA-OT-compliant parser.
+         * @param {string} htmlString - The HTML content to convert.
+         * @returns {string} The formatted DITA XML string.
+         */
+        function htmlToDita(htmlString) {
+            // If the rich text editor is empty, return an empty string to prevent parsing errors
+            if (!htmlString.trim()) {
+                return '';
+            }
 
-  <script>
-    const quill = new Quill('#editor', {
-      theme: 'snow',
-      modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold','italic','underline','strike'], ['blockquote','code-block'], [{ list:'ordered'},{ list:'bullet'}], ['link','image'], ['clean']] }
-    });
+            // Create a temporary element to parse the HTML string
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const body = doc.body;
 
-    const aceEditor = ace.edit('xmlEditor');
-    aceEditor.session.setMode('ace/mode/xml');
-    aceEditor.setTheme('ace/theme/textmate');
-    aceEditor.setOptions({ fontSize: '13px', wrap: true });
+            // Start with a basic DITA topic structure
+            let ditaXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+                          '<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">\n' +
+                          '<topic id="my-topic">\n';
 
-    function htmlToDita(html) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const body = doc.body;
-      const topic = document.implementation.createDocument('', '', null).createElement('topic');
-      const title = document.createElement('title');
-      const h1 = body.querySelector('h1,h2');
-      title.textContent = h1 ? h1.textContent.trim() : 'Generated topic';
-      if(h1) h1.remove();
-      topic.appendChild(title);
-      const shortdesc = document.createElement('shortdesc');
-      const firstPara = body.querySelector('p');
-      shortdesc.textContent = firstPara ? firstPara.textContent.trim() : '';
-      topic.appendChild(shortdesc);
-      const bodyElem = document.createElement('body');
-      Array.from(body.childNodes).forEach(node => { if(node.nodeType===Node.ELEMENT_NODE){ const p=document.createElement('p'); p.textContent=node.textContent; bodyElem.appendChild(p); } });
-      topic.appendChild(bodyElem);
-      const serializer = new XMLSerializer();
-      return '<?xml version="1.0" encoding="UTF-8"?>\n'+serializer.serializeToString(topic);
-    }
+            // Find the first heading (h1, h2, h3) and treat it as the topic title
+            const firstHeading = body.querySelector('h1, h2, h3');
+            if (firstHeading) {
+                ditaXml += `  <title>${firstHeading.innerText}</title>\n`;
+                firstHeading.remove(); // Remove it from the body to avoid processing twice
+            } else {
+                ditaXml += '  <title>New Topic</title>\n';
+            }
 
-    function ditaToHtml(xml) {
-      try {
-        const parser=new DOMParser();
-        const doc=parser.parseFromString(xml,'application/xml');
-        if(doc.querySelector('parsererror')) throw new Error('Parse error');
-        let html='';
-        if(doc.querySelector('title')) html+='<h1>'+doc.querySelector('title').textContent+'</h1>';
-        if(doc.querySelector('shortdesc')) html+='<p><em>'+doc.querySelector('shortdesc').textContent+'</em></p>';
-        if(doc.querySelector('body')) doc.querySelectorAll('body p').forEach(p=>html+='<p>'+p.textContent+'</p>');
-        return html;
-      }catch(e){return '<p><em>Invalid DITA XML</em></p>';}
-    }
+            // Begin the body element
+            ditaXml += '  <body>\n';
 
-    let ignoreNextRich=false, ignoreNextXml=false;
-    quill.on('text-change',()=>{ if(ignoreNextRich){ignoreNextRich=false;return;} const dita=htmlToDita(quill.root.innerHTML); ignoreNextXml=true; aceEditor.setValue(dita,-1); });
-    let xmlChangeTimer=null;
-    aceEditor.session.on('change',()=>{ if(ignoreNextXml){ignoreNextXml=false;return;} if(xmlChangeTimer) clearTimeout(xmlChangeTimer); xmlChangeTimer=setTimeout(()=>{ const html=ditaToHtml(aceEditor.getValue()); ignoreNextRich=true; quill.root.innerHTML=html; },500); });
+            // Process paragraphs and other elements
+            const paragraphs = body.querySelectorAll('p, div, ul, ol, h4, h5, h6, strong, em, b, i');
+            paragraphs.forEach(p => {
+                // Check if the element has a list parent
+                const isListItem = p.parentElement && (p.parentElement.tagName === 'UL' || p.parentElement.tagName === 'OL');
+                if (isListItem) {
+                    // Do not process list items as separate paragraphs
+                    return;
+                }
 
-    const sampleHtml='<h1>Sample topic</h1><p>This is a short intro.</p>';
-    quill.root.innerHTML=sampleHtml;
-    aceEditor.setValue(htmlToDita(sampleHtml),-1);
+                let content = p.innerHTML;
 
-    // Download HTML
-    document.getElementById('downloadHtmlBtn').addEventListener('click',()=>{
-      const htmlContent=quill.root.innerHTML;
-      const blob=new Blob([htmlContent],{type:'text/html'});
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob);
-      a.download='document.html';
-      a.click();
-    });
+                // Simple replacements for common formatting
+                content = content.replace(/<strong>(.*?)<\/strong>/g, '<bdo>$1</bdo>');
+                content = content.replace(/<b>(.*?)<\/b>/g, '<bdo>$1</bdo>');
+                content = content.replace(/<em>(.*?)<\/em>/g, '<emphasis>$1</emphasis>');
+                content = content.replace(/<i>(.*?)<\/i>/g, '<emphasis>$1</emphasis>');
+                content = content.replace(/<u>(.*?)<\/u>/g, '<ph style="text-decoration: underline;">$1</ph>');
 
-    // Download PDF
-    document.getElementById('downloadPdfBtn').addEventListener('click',()=>{
-      const { jsPDF }=window.jspdf;
-      const pdf=new jsPDF();
-      pdf.html(quill.root,{callback:function(doc){ doc.save('document.pdf'); }});
-    });
-  </script>
+                // Strip any remaining HTML tags and handle lists
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = p.innerHTML;
+
+                let listXml = '';
+                const lists = tempDiv.querySelectorAll('ul, ol');
+                if (lists.length > 0) {
+                    lists.forEach(list => {
+                        const listItems = list.querySelectorAll('li');
+                        if (listItems.length > 0) {
+                            if (list.tagName === 'UL') {
+                                listXml += `    <ul id="ul1">\n`;
+                            } else {
+                                listXml += `    <ol id="ol1">\n`;
+                            }
+                            listItems.forEach(item => {
+                                listXml += `      <li>${item.textContent}</li>\n`;
+                            });
+                            if (list.tagName === 'UL') {
+                                listXml += `    </ul>\n`;
+                            } else {
+                                listXml += `    </ol>\n`;
+                            }
+                        }
+                    });
+                }
+                
+                // Add a <p> tag if content is not empty
+                const strippedContent = tempDiv.textContent.trim();
+                if (strippedContent) {
+                    ditaXml += `    <p>${strippedContent}</p>\n`;
+                }
+                
+                // Add list XML if present
+                ditaXml += listXml;
+            });
+
+            // Close the body and topic elements
+            ditaXml += '  </body>\n' +
+                       '</topic>';
+            return ditaXml;
+        }
+
+        /**
+         * Converts DITA XML string back to a basic HTML representation.
+         * This is a simplified process using DOMParser.
+         * @param {string} ditaString - The DITA XML string to convert.
+         * @returns {string} The formatted HTML string.
+         */
+        function ditaToHtml(ditaString) {
+            // If the DITA XML editor is empty, return an empty string
+            if (!ditaString.trim()) {
+                return '';
+            }
+
+            // Use DOMParser to safely parse the XML string
+            const parser = new DOMParser();
+            let doc;
+            try {
+                doc = parser.parseFromString(ditaString, 'text/xml');
+                // Check for parser errors
+                const errorNode = doc.querySelector('parsererror');
+                if (errorNode) {
+                    // Log the error but don't stop the application
+                    console.error("XML Parsing Error:", errorNode.textContent);
+                    // Return an empty string or a simple error message to the user
+                    return `<p class="text-red-500">Error parsing DITA XML. Please check your syntax.</p>`;
+                }
+            } catch (e) {
+                console.error("XML Parsing Error:", e);
+                return `<p class="text-red-500">Error parsing DITA XML: ${e.message}</p>`;
+            }
+
+            // Get the root topic element
+            const topic = doc.querySelector('topic');
+            if (!topic) {
+                return '<p>No &lt;topic&gt; element found.</p>';
+            }
+
+            let htmlContent = '';
+
+            // Convert the title
+            const title = topic.querySelector('title');
+            if (title) {
+                htmlContent += `<h1>${title.innerHTML}</h1>`;
+            }
+
+            // Convert the body content
+            const body = topic.querySelector('body');
+            if (body) {
+                body.childNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        switch (node.tagName) {
+                            case 'p':
+                                let pContent = node.innerHTML;
+                                // Simple DITA-to-HTML formatting
+                                pContent = pContent.replace(/<bdo>/g, '<strong>').replace(/<\/bdo>/g, '</strong>');
+                                pContent = pContent.replace(/<emphasis>/g, '<em>').replace(/<\/emphasis>/g, '</em>');
+                                pContent = pContent.replace(/<ph style="text-decoration: underline;">/g, '<u>').replace(/<\/ph>/g, '</u>');
+                                htmlContent += `<p>${pContent}</p>`;
+                                break;
+                            case 'ul':
+                                // Handle unordered lists
+                                htmlContent += `<ul>${node.innerHTML}</ul>`;
+                                break;
+                            case 'ol':
+                                // Handle ordered lists
+                                htmlContent += `<ol>${node.innerHTML}</ol>`;
+                                break;
+                            // Add more cases for other DITA elements as needed
+                        }
+                    }
+                });
+            }
+
+            return htmlContent;
+        }
+        
+        // --- Gemini AI Integration ---
+        generateBtn.addEventListener('click', async () => {
+            const userPrompt = aiPrompt.value.trim();
+            if (!userPrompt) {
+                aiPrompt.placeholder = 'Please enter a prompt before generating content.';
+                return;
+            }
+
+            // Show loading state
+            generateBtn.textContent = 'Generating...';
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                // Make the API call
+                const chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: userPrompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = "" 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                // Fetch with exponential backoff
+                let response;
+                let retryDelay = 1000;
+                const maxRetries = 5;
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (response.status !== 429) { // Not a rate limit error
+                            break;
+                        }
+                    } catch (error) {
+                        // Network error, retry
+                    }
+                    if (i < maxRetries - 1) {
+                        await new Promise(res => setTimeout(res, retryDelay));
+                        retryDelay *= 2;
+                    }
+                }
+                
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                    const generatedText = result.candidates[0].content.parts[0].text;
+                    // Simple text-to-HTML conversion, converting newlines to <br> tags
+                    const generatedHtml = `<p>${generatedText.replace(/\n/g, '<br>')}</p>`;
+                    
+                    isUpdating = true;
+                    richTextEditor.innerHTML = generatedHtml;
+                    const generatedDita = htmlToDita(generatedHtml);
+                    xmlEditor.value = generatedDita;
+                    isUpdating = false;
+
+                } else {
+                    console.error("API response did not contain content.");
+                    richTextEditor.innerHTML = '<p class="text-red-500">Sorry, I couldn\'t generate content. Please try again.</p>';
+                    xmlEditor.value = '';
+                }
+
+            } catch (error) {
+                console.error('Error generating content:', error);
+                richTextEditor.innerHTML = '<p class="text-red-500">There was an error connecting to the API. Please try again later.</p>';
+                xmlEditor.value = '';
+            } finally {
+                // Reset loading state
+                generateBtn.textContent = 'Generate';
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+        // --- Rich Text Editor Toolbar Logic ---
+        toolbar.addEventListener('click', (event) => {
+            const button = event.target.closest('button');
+            if (button) {
+                const command = button.dataset.command;
+                if (command) {
+                    document.execCommand(command, false, null);
+                    // Ensure the content is updated after command execution
+                    const ditaXml = htmlToDita(richTextEditor.innerHTML);
+                    xmlEditor.value = ditaXml;
+                }
+            }
+        });
+
+        // --- Event Listeners for Two-Way Sync ---
+
+        // Listen for changes in the rich text editor to update the XML
+        richTextEditor.addEventListener('input', () => {
+            if (isUpdating) return;
+            isUpdating = true;
+            const ditaXml = htmlToDita(richTextEditor.innerHTML);
+            xmlEditor.value = ditaXml;
+            isUpdating = false;
+        });
+
+        // Listen for changes in the XML editor to update the rich text
+        xmlEditor.addEventListener('input', () => {
+            if (isUpdating) return;
+            isUpdating = true;
+            const htmlContent = ditaToHtml(xmlEditor.value);
+            richTextEditor.innerHTML = htmlContent;
+            isUpdating = false;
+        });
+
+        // --- Event Listeners for Download Buttons ---
+
+        // Download HTML
+        downloadHtmlBtn.addEventListener('click', () => {
+            const content = richTextEditor.innerHTML;
+            const blob = new Blob([content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Download PDF
+        downloadPdfBtn.addEventListener('click', () => {
+            const element = richTextEditor;
+            // Use html2pdf.js to generate and download the PDF
+            html2pdf().from(element).set({
+                margin: 10,
+                filename: 'document.pdf',
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).save();
+        });
+
+        // Initial content sync on page load
+        // This makes sure both editors start with the same content
+        richTextEditor.innerHTML = ditaToHtml(xmlEditor.value);
+    </script>
 </body>
 </html>
