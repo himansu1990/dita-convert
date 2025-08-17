@@ -515,38 +515,13 @@
             richTextEditor.innerHTML = '<h2>Generating PDF... Please wait.</h2>';
             downloadPdfBtn.disabled = true;
             
-            // Build a complete HTML document string for the PDF
-            const pdfHtml = `
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>PDF Document</title>
-                    <style>
-                        body {
-                            font-family: sans-serif;
-                            font-size: 12pt;
-                            line-height: 1.5;
-                            color: #000;
-                            padding: 20mm;
-                        }
-                        h1 { font-size: 24pt; margin-bottom: 1rem; }
-                        h2 { font-size: 20pt; margin-bottom: 0.75rem; }
-                        h3 { font-size: 16pt; margin-bottom: 0.5rem; }
-                        ul, ol { margin-bottom: 1rem; padding-left: 20px; }
-                        strong, b { font-weight: bold; }
-                        em, i { font-style: italic; }
-                    </style>
-                </head>
-                <body>
-                    ${originalContent}
-                </body>
-                </html>
-            `;
-            
-            // Generate PDF from the self-contained HTML string
+            // Generate a completely new, minimal HTML element for PDF creation
+            const pdfContainer = document.createElement('div');
+            pdfContainer.innerHTML = originalContent;
+
+            // Generate PDF from the self-contained HTML element
             html2pdf()
-                .from(pdfHtml)
+                .from(pdfContainer)
                 .set({
                     margin: 10,
                     filename: 'document.pdf',
