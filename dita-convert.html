@@ -40,6 +40,14 @@
         .toolbar-btn:hover {
             background-color: #e5e7eb; /* gray-200 */
         }
+        /* Style for the temporary, hidden div for PDF generation */
+        .pdf-temp-container {
+            position: absolute;
+            left: -9999px;
+            width: 210mm; /* A4 width */
+            padding: 10mm;
+            background-color: #fff;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col p-4 md:p-8">
@@ -509,21 +517,41 @@
 
         // Download PDF
         downloadPdfBtn.addEventListener('click', () => {
-            // Create a temporary div to ensure clean PDF generation
+            const originalContent = richTextEditor.innerHTML;
+
+            // Use a loading message to provide feedback
+            richTextEditor.innerHTML = '<h2>Generating PDF... Please wait.</h2>';
+            downloadPdfBtn.disabled = true;
+
+            // Create a temporary, hidden div with explicit styling
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = richTextEditor.innerHTML;
+            tempDiv.classList.add('pdf-temp-container');
+            tempDiv.innerHTML = originalContent;
             document.body.appendChild(tempDiv);
             
-            // Use html2pdf.js to generate and download the PDF
-            html2pdf().from(tempDiv).set({
-                margin: 10,
-                filename: 'document.pdf',
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).save().finally(() => {
-                // Remove the temporary div after generation is complete
-                document.body.removeChild(tempDiv);
-            });
+            // Generate PDF and then clean up
+            html2pdf()
+                .from(tempDiv)
+                .set({
+                    margin: 10,
+                    filename: 'document.pdf',
+                    html2canvas: { scale: 2, logging: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                })
+                .save()
+                .then(() => {
+                    // Restore original content and button state after successful save
+                    richTextEditor.innerHTML = originalContent;
+                    downloadPdfBtn.disabled = false;
+                    document.body.removeChild(tempDiv);
+                })
+                .catch(error => {
+                    console.error("PDF generation failed:", error);
+                    // Restore original content and show an error message
+                    richTextEditor.innerHTML = originalContent + `<p class="text-red-500 mt-4">Failed to generate PDF. Please try again.</p>`;
+                    downloadPdfBtn.disabled = false;
+                    document.body.removeChild(tempDiv);
+                });
         });
 
         // Download Markdown
