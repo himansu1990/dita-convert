@@ -47,6 +47,8 @@
             border-radius: 0.5rem;
             font-family: monospace;
             overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
         /* Style for tables */
         table {
@@ -62,6 +64,12 @@
         th {
             background-color: #f3f4f6;
             font-weight: 600;
+        }
+        blockquote {
+            border-left: 4px solid #d1d5db;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #4b5563;
         }
     </style>
 </head>
@@ -181,132 +189,142 @@
         let isUpdating = false;
 
         /**
+         * Recursively converts a DOM node and its children into a DITA XML string.
+         * @param {Node} node - The DOM node to convert.
+         * @returns {string} The DITA XML fragment.
+         */
+        function nodeToDita(node) {
+            let ditaXml = '';
+
+            // Handle element nodes
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                switch (node.tagName.toLowerCase()) {
+                    case 'h1':
+                    case 'h2':
+                    case 'h3':
+                    case 'h4':
+                    case 'h5':
+                    case 'h6':
+                        ditaXml += `      <section>\n        <title>${node.textContent}</title>\n`;
+                        break;
+                    case 'p':
+                        ditaXml += `      <p>${node.innerHTML}</p>\n`;
+                        break;
+                    case 'ul':
+                        ditaXml += `      <ul>\n`;
+                        break;
+                    case 'ol':
+                        ditaXml += `      <ol>\n`;
+                        break;
+                    case 'li':
+                        ditaXml += `        <li>${node.innerHTML}</li>\n`;
+                        break;
+                    case 'pre':
+                        ditaXml += `      <codeblock>\n${node.textContent}\n</codeblock>\n`;
+                        break;
+                    case 'img':
+                        ditaXml += `      <image href="${node.src}"/>\n`;
+                        break;
+                    case 'table':
+                        const colCount = Math.max(...Array.from(node.querySelectorAll('tr')).map(tr => tr.cells.length));
+                        ditaXml += `      <table>\n        <tgroup cols="${colCount}">\n`;
+                        for (let i = 1; i <= colCount; i++) {
+                            ditaXml += `          <colspec colnum="${i}" colname="col${i}"/>\n`;
+                        }
+                        const tableRows = node.querySelectorAll('tr');
+                        if (tableRows.length > 0) {
+                            ditaXml += `          <tbody>\n`;
+                            tableRows.forEach(row => {
+                                ditaXml += `            <row>\n`;
+                                Array.from(row.cells).forEach(cell => {
+                                    ditaXml += `              <entry>${cell.innerHTML}</entry>\n`;
+                                });
+                                ditaXml += `            </row>\n`;
+                            });
+                            ditaXml += `          </tbody>\n`;
+                        }
+                        ditaXml += `        </tgroup>\n      </table>\n`;
+                        break;
+                    case 'blockquote':
+                        ditaXml += `      <blockquote>${node.textContent}</blockquote>\n`;
+                        break;
+                    case 'a':
+                        ditaXml += `      <xref href="${node.href}">${node.innerHTML}</xref>\n`;
+                        break;
+                    case 'b':
+                    case 'strong':
+                        ditaXml += `<bdo>${node.innerHTML}</bdo>`;
+                        break;
+                    case 'i':
+                    case 'em':
+                        ditaXml += `<emphasis>${node.innerHTML}</emphasis>`;
+                        break;
+                    case 'u':
+                        ditaXml += `<ph style="text-decoration: underline;">${node.innerHTML}</ph>`;
+                        break;
+                    // For unknown elements, just convert their children
+                    default:
+                        for (const childNode of node.childNodes) {
+                            ditaXml += nodeToDita(childNode);
+                        }
+                        break;
+                }
+
+                if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tagName.toLowerCase())) {
+                    ditaXml += `      </section>\n`;
+                }
+
+            // Handle text nodes
+            } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                ditaXml += node.textContent.trim();
+            }
+
+            return ditaXml;
+        }
+
+
+        /**
          * Converts the HTML content from the rich text editor to DITA XML.
-         * This version is more resilient to various HTML structures.
-         * @param {string} htmlString - The HTML content to convert.
          * @returns {string} The formatted DITA XML string.
          */
-        function htmlToDita(htmlString) {
-            if (!htmlString.trim()) {
+        function htmlToDita() {
+            const htmlString = richTextEditor.innerHTML.trim();
+            if (!htmlString) {
                 return '';
             }
 
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlString, 'text/html');
-            const body = doc.body;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlString;
 
-            // Find the first heading to use as the topic title
-            const firstHeading = body.querySelector('h1, h2, h3, h4, h5, h6');
-            const topicTitle = firstHeading ? firstHeading.textContent : 'New Topic';
-            
+            let firstHeading = tempDiv.querySelector('h1, h2, h3, h4, h5, h6');
+            let topicTitle = firstHeading ? firstHeading.textContent.trim() : 'New Topic';
+            if (firstHeading) {
+                firstHeading.remove();
+            }
+
             let ditaXml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
                           `<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">\n` +
                           `<topic id="my-topic">\n` +
                           `  <title>${topicTitle}</title>\n` +
                           `  <body>\n`;
-
-            // Process all child nodes of the body
-            body.childNodes.forEach(node => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    let xmlContent = '';
-                    switch (node.tagName.toLowerCase()) {
-                        case 'h1':
-                        case 'h2':
-                        case 'h3':
-                            // The first heading is already used as the topic title, so we skip it.
-                            if (node === firstHeading) {
-                                return;
-                            }
-                            xmlContent = `    <section>\n      <title>${node.textContent}</title>\n    </section>\n`;
-                            break;
-                        case 'p':
-                            let pContent = node.innerHTML;
-                            pContent = pContent.replace(/<strong>(.*?)<\/strong>|<b>(.*?)<\/b>/g, '<bdo>$1$2</bdo>');
-                            pContent = pContent.replace(/<em>(.*?)<\/em>|<i>(.*?)<\/i>/g, '<emphasis>$1$2</emphasis>');
-                            pContent = pContent.replace(/<u>(.*?)<\/u>/g, '<ph style="text-decoration: underline;">$1</ph>');
-                            xmlContent = `    <p>${pContent}</p>\n`;
-                            break;
-                        case 'ul':
-                            xmlContent = `    <ul id="ul1">\n`;
-                            node.querySelectorAll('li').forEach(li => {
-                                xmlContent += `      <li>${li.innerHTML}</li>\n`;
-                            });
-                            xmlContent += `    </ul>\n`;
-                            break;
-                        case 'ol':
-                            xmlContent = `    <ol id="ol1">\n`;
-                            node.querySelectorAll('li').forEach(li => {
-                                xmlContent += `      <li>${li.innerHTML}</li>\n`;
-                            });
-                            xmlContent += `    </ol>\n`;
-                            break;
-                        case 'pre':
-                            xmlContent = `    <codeblock>${node.textContent}</codeblock>\n`;
-                            break;
-                        case 'img':
-                            xmlContent = `    <image href="${node.src}"/>\n`;
-                            break;
-                        case 'table':
-                            xmlContent = '    <table>\n      <tgroup cols="2">\n';
-                            // Get table headers
-                            const ths = node.querySelectorAll('th');
-                            if (ths.length > 0) {
-                                ths.forEach((th, index) => {
-                                    xmlContent += `        <colspec colnum="${index + 1}" colname="col${index + 1}"/>\n`;
-                                });
-                            }
-                            xmlContent += '        <thead>\n          <row>\n';
-                            ths.forEach(th => {
-                                xmlContent += `            <entry>${th.textContent}</entry>\n`;
-                            });
-                            xmlContent += '          </row>\n        </thead>\n';
-
-                            // Get table body rows
-                            const rows = node.querySelectorAll('tr');
-                            if (rows.length > 0) {
-                                xmlContent += '        <tbody>\n';
-                                // Skip the first row if there are headers
-                                const startRow = ths.length > 0 ? 1 : 0;
-                                for (let i = startRow; i < rows.length; i++) {
-                                    xmlContent += '          <row>\n';
-                                    rows[i].querySelectorAll('td').forEach(td => {
-                                        xmlContent += `            <entry>${td.textContent}</entry>\n`;
-                                    });
-                                    xmlContent += '          </row>\n';
-                                }
-                                xmlContent += '        </tbody>\n';
-                            }
-                            xmlContent += '      </tgroup>\n    </table>\n';
-                            break;
-                        case 'blockquote':
-                            xmlContent = `    <blockquote>${node.textContent}</blockquote>\n`;
-                            break;
-                        case 'a':
-                            xmlContent = `    <xref href="${node.href}">${node.textContent}</xref>\n`;
-                            break;
-                        // Handle text nodes that might be mixed with elements
-                        case '#text':
-                            if (node.textContent.trim()) {
-                                xmlContent = `    <p>${node.textContent.trim()}</p>\n`;
-                            }
-                            break;
-                        // Add more cases for other DITA elements as needed
-                        default:
-                            console.warn(`Unhandled element: ${node.tagName}`);
-                            break;
-                    }
-                    ditaXml += xmlContent;
-                }
-            });
-
+            
+            ditaXml += nodeToDita(tempDiv);
             ditaXml += '  </body>\n' +
                        '</topic>';
-            return ditaXml;
+
+            // Clean up empty lines and extra spaces
+            ditaXml = ditaXml.replace(/\s*<li>\s*/g, '        <li>').replace(/\s*<\/li>\s*/g, '</li>\n');
+            ditaXml = ditaXml.replace(/\s*<ul>\s*/g, '      <ul>\n').replace(/\s*<\/ul>\s*/g, '      </ul>\n');
+            ditaXml = ditaXml.replace(/\s*<ol>\s*/g, '      <ol>\n').replace(/\s*<\/ol>\s*/g, '      </ol>\n');
+            ditaXml = ditaXml.replace(/<p>\s*<\/p>\n/g, ''); // Remove empty paragraphs
+            ditaXml = ditaXml.replace(/^\s*$(?:\r\n?|\n)/gm, ''); // Remove empty lines
+            ditaXml = ditaXml.replace(/<br>/g, ''); // Remove <br> tags
+
+            return ditaXml.trim();
         }
 
         /**
          * Converts DITA XML string back to a basic HTML representation.
-         * This is a simplified process using DOMParser.
          * @param {string} ditaString - The DITA XML string to convert.
          * @returns {string} The formatted HTML string.
          */
@@ -347,10 +365,9 @@
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         switch (node.tagName.toLowerCase()) {
                             case 'p':
-                                let pContent = node.innerHTML;
-                                pContent = pContent.replace(/<bdo>(.*?)<\/bdo>/g, '<strong>$1</strong>');
-                                pContent = pContent.replace(/<emphasis>(.*?)<\/emphasis>/g, '<em>$1</i>');
-                                pContent = pContent.replace(/<ph style="text-decoration: underline;">(.*?)<\/ph>/g, '<u>$1</u>');
+                                let pContent = node.innerHTML.replace(/<bdo>/g, '<strong>').replace(/<\/bdo>/g, '</strong>');
+                                pContent = pContent.replace(/<emphasis>/g, '<em>').replace(/<\/emphasis>/g, '</em>');
+                                pContent = pContent.replace(/<ph style="text-decoration: underline;">/g, '<u>').replace(/<\/ph>/g, '</u>');
                                 htmlContent += `<p>${pContent}</p>`;
                                 break;
                             case 'section':
@@ -377,21 +394,20 @@
                                 htmlContent += `<img src="${node.getAttribute('href')}" />`;
                                 break;
                             case 'table':
-                                let tableHtml = '<table><thead><tr>';
-                                const ths = node.querySelectorAll('colspec');
-                                ths.forEach(th => {
-                                    tableHtml += `<th>${th.getAttribute('colname')}</th>`;
-                                });
-                                tableHtml += '</tr></thead><tbody>';
-
-                                node.querySelectorAll('row').forEach(row => {
-                                    tableHtml += '<tr>';
-                                    row.querySelectorAll('entry').forEach(entry => {
-                                        tableHtml += `<td>${entry.textContent}</td>`;
+                                let tableHtml = '<table>';
+                                const tableBody = node.querySelector('tbody');
+                                if (tableBody) {
+                                    tableHtml += '<tbody>';
+                                    tableBody.querySelectorAll('row').forEach(row => {
+                                        tableHtml += '<tr>';
+                                        row.querySelectorAll('entry').forEach(entry => {
+                                            tableHtml += `<td>${entry.innerHTML}</td>`;
+                                        });
+                                        tableHtml += '</tr>';
                                     });
-                                    tableHtml += '</tr>';
-                                });
-                                tableHtml += '</tbody></table>';
+                                    tableHtml += '</tbody>';
+                                }
+                                tableHtml += '</table>';
                                 htmlContent += tableHtml;
                                 break;
                             case 'blockquote':
@@ -447,8 +463,8 @@
                         case 'h6':
                         case 'p':
                             // Simple text formatting within paragraphs
-                            innerHTML = innerHTML.replace(/<strong>(.*?)<\/strong>/g, '**$1**');
-                            innerHTML = innerHTML.replace(/<em>(.*?)<\/em>/g, '*$1*');
+                            innerHTML = innerHTML.replace(/<strong>(.*?)<\/strong>|<b>(.*?)<\/b>/g, '**$1$2**');
+                            innerHTML = innerHTML.replace(/<em>(.*?)<\/em>|<i>(.*?)<\/i>/g, '*$1$2*');
                             innerHTML = innerHTML.replace(/<u>(.*?)<\/u>/g, '$1'); // Underline has no direct MD equivalent
                             markdown += `${innerHTML}\n\n`;
                             break;
@@ -558,7 +574,7 @@
                     isUpdating = true;
                     // Directly insert the generated HTML
                     richTextEditor.innerHTML = generatedHtml;
-                    const generatedDita = htmlToDita(generatedHtml);
+                    const generatedDita = htmlToDita();
                     xmlEditor.value = generatedDita;
                     isUpdating = false;
 
@@ -595,6 +611,8 @@
                 const command = button.dataset.command;
                 const value = button.dataset.value;
                 
+                richTextEditor.focus();
+
                 if (command === 'createLink') {
                     const url = prompt("Enter the URL for the link:");
                     if (url) {
@@ -636,7 +654,7 @@
                 }
                 
                 // Ensure the content is updated after command execution
-                const ditaXml = htmlToDita(richTextEditor.innerHTML);
+                const ditaXml = htmlToDita();
                 xmlEditor.value = ditaXml;
             }
         });
@@ -647,7 +665,7 @@
         richTextEditor.addEventListener('input', () => {
             if (isUpdating) return;
             isUpdating = true;
-            const ditaXml = htmlToDita(richTextEditor.innerHTML);
+            const ditaXml = htmlToDita();
             xmlEditor.value = ditaXml;
             isUpdating = false;
         });
@@ -660,7 +678,7 @@
             richTextEditor.innerHTML = htmlContent;
             isUpdating = false;
         });
-
+        
         // --- Event Listeners for Download Buttons ---
 
         // Download PDF
