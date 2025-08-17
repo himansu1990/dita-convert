@@ -322,11 +322,19 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
                         });
-                        if (response.status !== 429) { // Not a rate limit error
-                            break;
+                        // Check for a non-error status code before breaking the loop
+                        if (response.ok) {
+                           break;
+                        }
+                        // Handle rate limit specifically to retry
+                        if (response.status !== 429) {
+                            throw new Error(`API Error: ${response.status} ${response.statusText}`);
                         }
                     } catch (error) {
-                        // Network error, retry
+                        // Network error or other non-rate-limit errors
+                        if (i === maxRetries - 1) {
+                           throw error; // Rethrow on last retry
+                        }
                     }
                     if (i < maxRetries - 1) {
                         await new Promise(res => setTimeout(res, retryDelay));
