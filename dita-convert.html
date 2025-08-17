@@ -379,7 +379,7 @@
                 const chatHistory = [];
                 chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, p, ul, ol, strong, and em tags. The prompt is: ${userPrompt}` }] });
                 const payload = { contents: chatHistory };
-                const apiKey = "" 
+                const apiKey = "AIzaSyDdj6VoNhgKHIh3myG_UPzfXseXRLPUldE" 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 
                 let response;
