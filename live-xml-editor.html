@@ -1,498 +1,264 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Complete Live DITA Editor + Gemini + Quill (Tables & Code)</title>
-
-  <!-- Quill styles -->
-  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-
-  <!-- quill-better-table styles -->
-  <link href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css" rel="stylesheet">
-
-  <style>
-    :root {
-      --primary: #2d9c2f;
-      --muted: #777;
-    }
-    body {
-      font-family: "Times New Roman", serif;
-      margin: 0;
-      padding: 18px;
-      background: #f4f6f8;
-      color: #111;
-    }
-    h1 { margin: 0 0 12px 0; font-size:20px; color:#222; }
-    .layout { display:flex; gap:18px; align-items:flex-start; }
-    .left, .right {
-      box-sizing: border-box;
-      background: #fff;
-      border-radius: 8px;
-      border:1px solid #e6e9ec;
-      padding:12px;
-      box-shadow: 0 6px 18px rgba(20,30,40,0.03);
-    }
-    .left { width:48%; display:flex; flex-direction:column; gap:10px; }
-    .right { width:52%; display:flex; flex-direction:column; gap:8px; height:760px; }
-
-    textarea#ditaTextarea {
-      width:100%;
-      height:560px;
-      padding:10px;
-      font-family:monospace;
-      font-size:13px;
-      border-radius:6px;
-      border:1px solid #ddd;
-      box-sizing:border-box;
-      resize:vertical;
-    }
-
-    .prompt-row { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
-    input#promptBox {
-      width:70%;
-      padding:8px;
-      border-radius:6px;
-      border:1px solid #ddd;
-      box-sizing:border-box;
-    }
-    button.primary {
-      background: var(--primary);
-      color:#fff; border:none;
-      padding:8px 12px; border-radius:6px; cursor:pointer;
-    }
-    button.primary:hover { filter:brightness(.95); }
-
-    .small-muted { color:var(--muted); font-size:13px; }
-
-    /* Right panel output */
-    .output-panel {
-      display:flex; flex-direction:column; height:100%;
-    }
-    .output-header { padding:10px 12px; border-bottom:1px solid #eee; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
-    #toolbarWrap { display:none; border-bottom:1px solid #eee; background:#fafafa; padding:8px; z-index:15; }
-
-    /* toolbar button styles */
-    .ql-formats button, .ql-formats select {
-      background:#fff; border:1px solid #ddd; border-radius:6px; padding:6px 8px; margin:2px; cursor:pointer;
-    }
-    .ql-formats button:hover { background:#f0f0f0; }
-
-    #editor { flex:1; height:100%; overflow:auto; background:#fff; padding:10px; }
-
-    .action-bar { display:flex; gap:8px; padding:10px; border-top:1px solid #eee; background:#fbfbfb; align-items:center; }
-    .action-bar .muted { color:var(--muted); font-size:13px; flex:1; }
-
-    .btn { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; }
-    .btn-primary { background:var(--primary); color:#fff; }
-    .btn-ghost { background:#fff; border:1px solid #ddd; color:#333; }
-    .btn-danger { background:#c0392b; color:white; }
-
-    /* code block style for inserted pre.codeblock */
-    pre.codeblock {
-      background:#272822; color:#f8f8f2; padding:10px; border-radius:4px; font-family:monospace; overflow-x:auto;
-    }
-
-    /* table styling inside editor */
-    .ql-editor table { border-collapse:collapse; width:100%; }
-    .ql-editor td, .ql-editor th { border:1px solid #ccc; padding:6px 8px; }
-
-    @media (max-width: 1000px) {
-      .layout { flex-direction:column; }
-      .left, .right { width:100%; }
-      textarea#ditaTextarea { height:360px; }
-    }
-  </style>
-</head>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
+<topic id="getting_started">
+<title>Getting Started</title>
+<shortdesc>The guide is about how to start using PaySecure api.</shortdesc>
 <body>
-  <h1>Complete Live DITA Editor — Gemini + Rich Editor (Tables & Code)</h1>
+<section id="create_account">
+<title>Create an account</title>
+<p>To start using PaySecure, you need to create an account. Visit the PaySecure website and sign up for a new account. You will need to provide some basic information such as your name, email address, and a password.</p>
+</section>
+<section id="get_api_key">
+<title>Get your API key</title>
+<p>Once you have created an account, you will need to obtain an api key. To get the api key, you need to navigate to the api section on the dashboard.</p>
+<p>PaySecure authenticates API requests using API keys. If a request doesn't have a valid key, it returns an
+<b>invalid request error</b>.</p>
+</section>
+<section id="base_url">
+<title>Base URLs</title>
+<ul>
+<li>Production: <i>https://api.paysecure.com/v1 </i> </li>
+<li>Dandbox: <i>https://sandbox.paysecure.com/v1</i></li>
+</ul>
+</section>
+<section id="authentication">
+<title>Authentication</title>
+<p>All API requests must include the API keyin the request header. The key should be included as follows:</p>
+<title>Generate Token</title>
+<p><b>Endpoint:</b></p>
+<codeblock output="json">POST /auth/token</codeblock>
+</section>
+<section id="request_body">
+<table>
+<title>Request Body</title>
+<tgroup cols="4">
+<colspec colwidth="1*"/>
+<colspec colwidth="2*"/>
+<colspec colwidth="3*"/>
+<colspec colwidth="4*"/>
+<thead>
+<row>
+<entry align="center">Parameter</entry>
+<entry align="center">Type</entry>
+<entry align="center">Required</entry>
+<entry align="center">Description</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>client_id</entry>
+<entry>String</entry>
+<entry>Yes</entry>
+<entry>PaySecure client ID</entry>
+</row>
+<row>
+<entry>client_secret</entry>
+<entry>String</entry>
+<entry>Yes</entry>
+<entry>PaySecure API key</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+</section>
+<section id="example_request">
+<title>Example Request</title>
+<codeblock output="bash">
+curl -X POST "https://api.paysecure.com/v1/auth/token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "YOUR_CLIENT_ID",
+    "client_secret": "YOUR_CLIENT_SECRET"
+  }'
 
-  <div class="layout">
-    <!-- LEFT: DITA XML area -->
-    <div class="left">
-      <div class="prompt-row">
-        <input id="promptBox" placeholder="Type prompt to generate DITA XML (press Enter)..." />
-        <button id="genBtn" class="primary">Generate XML (Gemini)</button>
-        <button id="loadToEditorBtn" class="btn btn-ghost" title="Render DITA into editor">Render → Editor</button>
-      </div>
+</codeblock>
+<title>Example Response</title>
+<codeblock output="json">
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR...",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}
+</codeblock>
+</section>
+<section id="endpoints">
+<title>Endpoints</title>
+<p><b>1.Create Payment</b></p>
+<codeblock output="bash">
+POST /payments
 
-      <textarea id="ditaTextarea" placeholder="Type or paste DITA XML here..."></textarea>
-      <div class="small-muted">Tip: generate with Gemini, tweak XML, then click <b>Render → Editor</b>.</div>
-    </div>
+</codeblock>
+<p>Request Body</p>
+<table>
+<tgroup colspec="4">
+<colspec colwidth="1*"/>
+<colspec colwidth="2*"/>
+<colspec colwidth="3*"/>
+<colspec colwidth="4*"/>
+<thead>
+<row>
+<entry align="center">Parameter</entry>
+<entry align="center">Type</entry>
+<entry aligh="center">Required</entry>
+<entry align="center">Description</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry align="center">amount</entry>
+<entry align="center">Number</entry>
+<entry align="center">Yes</entry>
+<entry align="center">Payment amount</entry>
+</row>
+<row>
+<entry align="center">currency</entry>
+<entry align="center">String</entry>
+<entry align="cennter">Yes</entry>
+<entry align="center">Currency code(INR, USD, EUR)</entry>
+</row>
+<row>
+<entry align="center">customer_email</entry>
+<entry align="center">String</entry>
+<entry align="center">Yes</entry>
+<entry align="center">Customer's email</entry>
+</row>
+<row>
+<entry align="center">redirect_url</entry>
+<entry align="center">String</entry>
+<entry align="center">Yes</entry>
+<entry align="center">Redirect after payment completion</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
 
-    <!-- RIGHT: Editor / Live output (Quill) -->
-    <div class="right output-panel">
-      <div class="output-header">
-        <div>Live Output (Quill Rich Editor)</div>
-        <div class="small-muted">Toggle editing to show toolbar & table controls</div>
-      </div>
+<p>Example Request:</p>
+<codeblock output="bash">
+curl -X POST "https://api.paysecure.com/v1/payments" \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 100.00,
+    "currency": "USD",
+    "customer_email": "customer@example.com",
+    "redirect_url": "https://merchant.com/payment-success"
+  }'
 
-      <!-- toolbar (hidden until editing enabled) -->
-      <div id="toolbarWrap">
-        <span class="ql-formats">
-          <button class="ql-bold" title="Bold"></button>
-          <button class="ql-italic" title="Italic"></button>
-          <button class="ql-underline" title="Underline"></button>
-          <button class="ql-strike" title="Strike"></button>
-        </span>
+</codeblock>
+<p>Example Response:</p>
+<codeblock output="json">
+{
+  "payment_id": "pay_12345",
+  "payment_url": "https://paysecure.com/pay/pay_12345"
+}
 
-        <span class="ql-formats">
-          <select class="ql-font"></select>
-          <select class="ql-size"></select>
-          <select class="ql-color"></select>
-        </span>
+</codeblock>
+<p>2. Get Payment Status</p>
+<p>Endpoint:</p>
+<codeblock output="bash">
+GET /payments/{payment_id}
+</codeblock>
+<p>Example Request:</p>
+<codeblock output="bash">
+curl -X GET "https://api.paysecure.com/v1/payments/pay_12345" \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+</codeblock>
+<p>Example Response:</p>
+<codeblock output="json">
+{
+  "payment_id": "pay_12345",
+  "status": "SUCCESS",
+  "amount": 100.00,
+  "currency": "USD"
+}
 
-        <span class="ql-formats">
-          <button class="ql-list" value="ordered" title="Ordered list"></button>
-          <button class="ql-list" value="bullet" title="Bullet list"></button>
-          <button class="ql-indent" value="-1" title="Outdent"></button>
-          <button class="ql-indent" value="+1" title="Indent"></button>
-        </span>
+</codeblock>
+</section>
+<section id="error_codes">
+<table>
+<tgroup colspec="3">
+<colspec colwidth="1*"/>
+<colspec colwidth="2*"/>
+<colspec colwidth="3*"/>
+<thead>
+<row>
+<entry align="center">Code</entry>
+<entry align="center">Message</entry>
+<entry align="center">Possible Cause</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry align="center">400</entry>
+<entry align="center">Invalid Parameters</entry>
+<entry align="center">Missing or invalid parameter</entry>
+</row>
+<row>
+<entry align="center">401</entry>
+<entry align="center">Unauthorized</entry>
+<entry align="center">Missing/expire token</entry>
+</row>
+<row>
+<entry align="center">500</entry>
+<entry align="center">Server Error</entry>
+<entry align="center">Internal server issue</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+</section>
+<section id="quick_start">
+<title>Quick Start Examples</title>
+<p>JavaScript(Node.js)</p>
+<codeblock output="javascript">
+const fetch = require('node-fetch');
 
-        <span class="ql-formats">
-          <button class="ql-align" value="" title="Left"></button>
-          <button class="ql-align" value="center" title="Center"></button>
-          <button class="ql-align" value="right" title="Right"></button>
-        </span>
+async function createPayment() {
+  const token = 'ACCESS_TOKEN';
+  const response = await fetch('https://api.paysecure.com/v1/payments', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      amount: 100.00,
+      currency: 'USD',
+      customer_email: 'customer@example.com',
+      redirect_url: 'https://merchant.com/payment-success'
+    })
+  });
 
-        <span class="ql-formats">
-          <button class="ql-link" title="Insert link"></button>
-          <button class="ql-image" title="Insert image"></button>
-          <button class="ql-code-block" title="Code block"></button>
-        </span>
+  const data = await response.json();
+  console.log(data);
+}
 
-        <span class="ql-formats">
-          <button id="insertTableBtn" title="Insert Table (rows x cols)">📊 Insert Table</button>
-          <button id="deleteTableBtn" title="Delete Table at cursor">🗑️ Delete Table</button>
-        </span>
+createPayment();
 
-        <span class="ql-formats">
-          <button id="h1Btn">H1</button>
-          <button id="h2Btn">H2</button>
-          <button id="h3Btn">H3</button>
-        </span>
-      </div>
+</codeblock>
+<p>Python</p>
+<codeblock output="python">
+import requests
 
-      <!-- Quill editor root -->
-      <div id="editor"></div>
+token = "ACCESS_TOKEN"
+url = "https://api.paysecure.com/v1/payments"
 
-      <!-- action bar -->
-      <div class="action-bar">
-        <button id="toggleEditBtn" class="btn btn-primary">Enable Editing</button>
-        <button id="downloadPdfBtn" class="btn btn-ghost">Download PDF</button>
-        <button id="downloadHtmlBtn" class="btn btn-ghost">Download HTML</button>
-        <div class="muted">Quill + quill-better-table (right-click cell for extra ops)</div>
-      </div>
-    </div>
-  </div>
+payload = {
+    "amount": 100.00,
+    "currency": "USD",
+    "customer_email": "customer@example.com",
+    "redirect_url": "https://merchant.com/payment-success"
+}
 
-  <!-- Quill & plugins -->
-  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
-  <!-- Use a working quill-better-table bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.js"></script>
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json"
+}
 
-  <!-- html2pdf for PDF export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())
 
-  <script>
-    /*************************************************************************
-     * WARNING: You asked for the full client-side file including the API key.
-     * This is insecure for production because keys in client JS are visible
-     * to anyone. Prefer a backend proxy to keep keys secret.
-     *
-     * The API key included below is the same key you previously provided.
-     *************************************************************************/
-    const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg";
-
-    /*************************************************************************
-     * Register and initialize Quill with quill-better-table
-     *************************************************************************/
-    Quill.register({
-      'modules/better-table': QuillBetterTable
-    }, true);
-
-    const quill = new Quill('#editor', {
-      theme: 'snow',
-      modules: {
-        toolbar: '#toolbarWrap',
-        table: false,
-        'better-table': {
-          operationMenu: {
-            items: {
-              unmergeCells: { text: 'Unmerge cells' },
-              insertRowAbove: { text: 'Insert row above' },
-              insertRowBelow: { text: 'Insert row below' },
-              insertColumnLeft: { text: 'Insert column left' },
-              insertColumnRight: { text: 'Insert column right' },
-              deleteRow: { text: 'Delete row' },
-              deleteColumn: { text: 'Delete column' }
-            }
-          }
-        },
-        keyboard: {
-          bindings: QuillBetterTable.keyboardBindings
-        }
-      },
-      formats: [
-        'header','bold','italic','underline','strike','color','font','size',
-        'list','bullet','indent','link','image','code-block','align','table'
-      ]
-    });
-
-    // Start disabled (editing toggled by button)
-    quill.disable();
-    document.getElementById('toolbarWrap').style.display = 'none';
-
-    /*************************************************************************
-     * Helper: find table-container blot that contains current selection
-     *************************************************************************/
-    function findTableContainerAtSelection() {
-      const range = quill.getSelection();
-      if (!range) return null;
-      // Get the DOM selection node
-      const sel = window.getSelection();
-      if (!sel.rangeCount) return null;
-      const anchorNode = sel.anchorNode;
-      if (!anchorNode) return null;
-
-      // Walk up ancestors to find element with 'ql-table' or table-container
-      let node = anchorNode;
-      while (node) {
-        if (node.tagName && node.tagName.toLowerCase() === 'table') {
-          // find the table-container blot corresponding to this table DOM node
-          const blots = quill.scroll.descendants(function(blot) {
-            return blot.statics && blot.statics.blotName === 'table';
-          });
-          for (const b of blots) {
-            if (b.domNode === node || b.domNode.contains(node)) {
-              // find parent table-container blot
-              let parent = b.parent;
-              while (parent && !(parent.statics && parent.statics.blotName === 'table-container')) {
-                parent = parent.parent;
-              }
-              return parent || b;
-            }
-          }
-        }
-        node = node.parentNode;
-      }
-      return null;
-    }
-
-    /*************************************************************************
-     * Insert Table (prompt rows/cols)
-     *************************************************************************/
-    document.getElementById('insertTableBtn').addEventListener('click', function() {
-      const tableModule = quill.getModule('better-table');
-      if (!tableModule) { alert('Table module not available'); return; }
-      let rows = parseInt(prompt('Rows', '3'), 10);
-      let cols = parseInt(prompt('Columns', '3'), 10);
-      if (!(rows > 0)) rows = 3;
-      if (!(cols > 0)) cols = 3;
-      tableModule.insertTable(rows, cols);
-    });
-
-    /*************************************************************************
-     * Delete entire table at cursor
-     *************************************************************************/
-    document.getElementById('deleteTableBtn').addEventListener('click', function() {
-      const tableModule = quill.getModule('better-table');
-      // try find table-container blot via selection
-      const tblContainer = findTableContainerAtSelection();
-      if (tblContainer) {
-        // remove the table blot node
-        tblContainer.remove();
-      } else {
-        alert('Place cursor inside the table you want to delete.');
-      }
-    });
-
-    /*************************************************************************
-     * Heading buttons
-     *************************************************************************/
-    document.getElementById('h1Btn').addEventListener('click', ()=> quill.format('header', 1));
-    document.getElementById('h2Btn').addEventListener('click', ()=> quill.format('header', 2));
-    document.getElementById('h3Btn').addEventListener('click', ()=> quill.format('header', 3));
-
-    /*************************************************************************
-     * Toggle editing: show/hide toolbar, enable/disable Quill
-     *************************************************************************/
-    const toggleEditBtn = document.getElementById('toggleEditBtn');
-    toggleEditBtn.addEventListener('click', () => {
-      const toolbarWrap = document.getElementById('toolbarWrap');
-      if (quill.isEnabled()) {
-        quill.disable();
-        toolbarWrap.style.display = 'none';
-        toggleEditBtn.textContent = 'Enable Editing';
-      } else {
-        quill.enable();
-        toolbarWrap.style.display = 'block';
-        toggleEditBtn.textContent = 'Disable Editing';
-      }
-    });
-
-    /*************************************************************************
-     * Downloaders (HTML and PDF)
-     *************************************************************************/
-    document.getElementById('downloadHtmlBtn').addEventListener('click', () => {
-      const html = quill.root.innerHTML;
-      const filename = (document.getElementById('promptBox').value || 'live-dita-output') + '.html';
-      const blob = new Blob([html], { type: 'text/html' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename.replace(/[<>:"/\\|?*]+/g, '');
-      a.click();
-    });
-
-    document.getElementById('downloadPdfBtn').addEventListener('click', () => {
-      const element = quill.root;
-      const filename = (document.getElementById('promptBox').value || 'live-dita-output') + '.pdf';
-      html2pdf().set({
-        margin:[15,15,15,15],
-        filename: filename.replace(/[<>:"/\\|?*]+/g, ''),
-        image:{type:'jpeg',quality:0.98},
-        html2canvas:{scale:2,useCORS:true},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-      }).from(element).save();
-    });
-
-    /*************************************************************************
-     * DITA -> HTML transform (keeps earlier behavior): convert DITA XML to
-     * simple HTML and insert into the editor.
-     *************************************************************************/
-    function escapeHtml(s) {
-      if (!s && s !== 0) return '';
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function escapeAttr(s) { if (!s && s !== 0) return ''; return String(s).replace(/"/g,'&quot;'); }
-
-    function parseDITAChildren(children, headingLevel) {
-      let html = '';
-      for (let child of children) {
-        const tag = child.tagName;
-        switch (tag) {
-          case 'title': html += `<h${headingLevel}>${escapeHtml(child.textContent)}</h${headingLevel}>`; break;
-          case 'p': html += `<p>${escapeHtml(child.textContent)}</p>`; break;
-          case 'note': html += `<div class="note">💡 ${escapeHtml(child.textContent)}</div>`; break;
-          case 'codeblock': html += `<pre class="codeblock">${escapeHtml(child.textContent)}</pre>`; break;
-          case 'ul': html += `<ul>${parseDITAChildren(child.children, headingLevel)}</ul>`; break;
-          case 'ol': html += `<ol>${parseDITAChildren(child.children, headingLevel)}</ol>`; break;
-          case 'li': html += `<li>${escapeHtml(child.textContent)}</li>`; break;
-          case 'section': html += parseDITAChildren(child.children, headingLevel); break;
-          case 'table': html += `<table>${parseDITAChildren(child.children, headingLevel)}</table>`; break;
-          case 'tgroup': html += parseDITAChildren(child.children, headingLevel); break;
-          case 'thead': html += `<thead>${parseDITAChildren(child.children, headingLevel)}</thead>`; break;
-          case 'tbody': html += `<tbody>${parseDITAChildren(child.children, headingLevel)}</tbody>`; break;
-          case 'row': html += `<tr>${parseDITAChildren(child.children, headingLevel)}</tr>`; break;
-          case 'entry': html += `<td>${escapeHtml(child.textContent)}</td>`; break;
-          case 'image': {
-            const href = child.getAttribute('href') || '';
-            html += `<img src="${escapeAttr(href)}" alt="">`;
-            break;
-          }
-          default:
-            html += parseDITAChildren(child.children, headingLevel);
-        }
-      }
-      return html;
-    }
-
-    function transformDITA(xmlDoc) {
-      let html = '';
-      const root = xmlDoc.documentElement;
-      const title = root.getElementsByTagName('title')[0];
-      if (title && root.tagName === 'topic') {
-        html += `<h1>${escapeHtml(title.textContent)}</h1>`;
-      } else {
-        const prompt = document.getElementById('promptBox').value.trim();
-        if (prompt) html += `<h1>${escapeHtml(prompt)}</h1>`;
-      }
-      let children = Array.from(root.children);
-      if (children.length && children[0].tagName === 'title') children.shift();
-      html += parseDITAChildren(children, 2);
-      return html;
-    }
-
-    document.getElementById('loadToEditorBtn').addEventListener('click', () => {
-      const xmlText = document.getElementById('ditaTextarea').value.trim();
-      if (!xmlText) { alert('Paste or generate DITA XML first.'); return; }
-      try {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-        if (xmlDoc.getElementsByTagName('parsererror').length) {
-          alert('Invalid XML. Please check the DITA XML.');
-          return;
-        }
-        const html = transformDITA(xmlDoc);
-        quill.root.innerHTML = html;
-      } catch (e) {
-        console.error(e);
-        alert('Error parsing XML.');
-      }
-    });
-
-    /*************************************************************************
-     * Gemini integration (client-side) — WARNING: key is public in this file.
-     * If you prefer, I can provide a backend Node.js snippet to keep key secret.
-     *************************************************************************/
-    async function generateXML() {
-      const prompt = document.getElementById('promptBox').value.trim();
-      if (!prompt) { alert('Enter a prompt first.'); return; }
-      try {
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(GEMINI_API_KEY);
-        const body = {
-          contents: [{ role: "user", parts: [{ text: `Generate a valid DITA XML topic. Prompt: ${prompt}` }] }]
-        };
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const json = await resp.json();
-        if (json.candidates && json.candidates.length) {
-          const generated = json.candidates[0].content.parts[0].text;
-          document.getElementById('ditaTextarea').value = generated;
-          // optionally auto-render:
-          document.getElementById('loadToEditorBtn').click();
-        } else {
-          alert('No output from Gemini. Check console response.');
-          console.log(json);
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Error calling Gemini API (see console).');
-      }
-    }
-
-    document.getElementById('genBtn').addEventListener('click', generateXML);
-    document.getElementById('promptBox').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); generateXML(); }
-    });
-
-    /*************************************************************************
-     * Preload sample DITA so editor isn't empty (optional)
-     *************************************************************************/
-    const sample = `<?xml version="1.0"?>
-<topic id="sample">
-  <title>Sample DITA Topic</title>
-  <p>This is a sample DITA paragraph.</p>
-  <note>This is a note.</note>
-  <section>
-    <title>Section One</title>
-    <p>Section content here.</p>
-  </section>
-  <codeblock>console.log('hello world');</codeblock>
-  <table>
-    <row><entry>Cell 1</entry><entry>Cell 2</entry></row>
-    <row><entry>Cell 3</entry><entry>Cell 4</entry></row>
-  </table>
-</topic>`;
-    document.getElementById('ditaTextarea').value = sample;
-    try {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(sample, 'application/xml');
-      quill.root.innerHTML = transformDITA(xmlDoc);
-    } catch (e) { /* ignore */ }
-
-  </script>
+</codeblock>
+</section>
 </body>
-</html>
+</topic>
