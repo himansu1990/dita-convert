@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Live DITA Editor Free + Gemini AI</title>
   <style>
     body { font-family: 'Times New Roman', serif; margin:0; padding:20px; background:#f7f7f7;}
@@ -38,7 +38,7 @@
   </div>
 
   <!-- Action Buttons -->
-  <button onclick="toggleEdit()">Enable Editing</button>
+  <button id="editBtn" onclick="toggleEdit()">Enable Editing</button>
   <button onclick="downloadPDF('liveOutput')">Download Live Output PDF</button>
   <button onclick="downloadHTML('liveOutput')">Download Live Output HTML</button>
 
@@ -60,6 +60,7 @@
       if(title && root.tagName==="topic"){
         html+=`<h1>${title.textContent}</h1>`;
       } else {
+        // fallback: use the prompt as title if no <title> in XML
         const prompt = document.getElementById("promptBox").value.trim();
         if(prompt) html+=`<h1>${prompt}</h1>`;
       }
@@ -177,21 +178,22 @@
       }
     }
 
-    // ✅ New Feature: Toggle Editable Mode
+    // ✅ Toggle Editable Mode with Dynamic Button Text
     let isEditable = false;
     function toggleEdit(){
       isEditable = !isEditable;
+      const editBtn = document.getElementById("editBtn");
       liveOutput.contentEditable = isEditable;
       if(isEditable){
         liveOutput.classList.add("edit-mode");
-        alert("Edit Mode Enabled: You can now modify the output directly before downloading.");
+        editBtn.textContent = "Disable Editing";
       } else {
         liveOutput.classList.remove("edit-mode");
-        alert("Edit Mode Disabled: Output is back to preview-only.");
+        editBtn.textContent = "Enable Editing";
       }
     }
 
-    // ✅ New Feature: Trigger Gemini when pressing Enter
+    // ✅ Trigger Gemini when pressing Enter in prompt box
     document.getElementById("promptBox").addEventListener("keydown", function(event) {
       if(event.key === "Enter"){
         event.preventDefault();
