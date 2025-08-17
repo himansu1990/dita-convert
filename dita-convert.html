@@ -9,16 +9,16 @@
   <!-- Ace (XML editor) -->
   <style>
     body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; padding:0; height:100vh; display:flex; flex-direction:column; }
-    header { padding:12px 16px; background:#f4f6f8; border-bottom:1px solid #e6e9ec; display:flex; gap:12px; align-items:center; }
+    header { padding:12px 16px; background:#f4f6f8; border-bottom:1px solid #e6e9ec; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
     .container { display:flex; flex:1; gap:12px; padding:12px; box-sizing:border-box; }
     .panel { flex:1; display:flex; flex-direction:column; min-width:0; }
     .panel .title { font-weight:600; margin-bottom:8px; }
     #editor { height: calc(100% - 36px); background:white; border:1px solid #ddd; border-radius:6px; overflow:auto; }
     #xmlEditor { height: calc(100% - 36px); border:1px solid #ddd; border-radius:6px; }
-    .controls { display:flex; gap:8px; align-items:center; }
-    input[type=text] { padding:8px 10px; border-radius:6px; border:1px solid #ccc; min-width:320px; }
-    button.generate { background: #4CAF50; color:white; border: none; padding:10px 14px; border-radius:6px; cursor:pointer; font-weight:600; }
-    button.generate[disabled] { opacity:0.6; cursor:not-allowed; }
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    input[type=text] { padding:8px 10px; border-radius:6px; border:1px solid #ccc; min-width:260px; }
+    button.generate, button.download { background: #4CAF50; color:white; border: none; padding:10px 14px; border-radius:6px; cursor:pointer; font-weight:600; }
+    button[disabled] { opacity:0.6; cursor:not-allowed; }
     .small { font-size:12px; color:#666; }
     footer { padding:8px 12px; font-size:13px; color:#666; background:#fafafa; border-top:1px solid #eee; }
     .row { display:flex; gap:12px; align-items:center; }
@@ -28,8 +28,10 @@
   <header>
     <div style="font-weight:700">DITA Live Editor</div>
     <div class="controls">
-      <input id="promptInput" type="text" placeholder="Type prompt for Gemini (example: 'Write a short introduction about account reconciliation')" />
+      <input id="promptInput" type="text" placeholder="Type prompt for Gemini..." />
       <button id="generateBtn" class="generate">Generate</button>
+      <button id="downloadHtmlBtn" class="download">Download HTML</button>
+      <button id="downloadPdfBtn" class="download">Download PDF</button>
       <div class="small">Tip: Both editors are editable. Edits sync both ways.</div>
     </div>
   </header>
@@ -55,24 +57,13 @@
 
   <!-- Libraries -->
   <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.1/ace.js" integrity="sha512-3XG0C7e2u3kI6C8JtFzv2s4odSx3d4mG8v0tYf8x4rVq1J0xO5yE3Xl0k4hY0Z6n1Y4d2e7QvG9u6R4K0s9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.1/ace.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <script>
-    // -------------------------
-    // Basic setup
-    // -------------------------
     const quill = new Quill('#editor', {
       theme: 'snow',
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ['bold', 'italic', 'underline', 'strike'],
-          ['blockquote', 'code-block'],
-          [{ list: 'ordered' }, { list: 'bullet' }],
-          ['link', 'image'],
-          ['clean']
-        ]
-      }
+      modules: { toolbar: [[{ header: [1, 2, 3, false] }], ['bold','italic','underline','strike'], ['blockquote','code-block'], [{ list:'ordered'},{ list:'bullet'}], ['link','image'], ['clean']] }
     });
 
     const aceEditor = ace.edit('xmlEditor');
@@ -80,290 +71,65 @@
     aceEditor.setTheme('ace/theme/textmate');
     aceEditor.setOptions({ fontSize: '13px', wrap: true });
 
-    // -------------------------
-    // Utility: convert Quill HTML -> simple DITA XML
-    // This is a pragmatic mapping to illustrate working flow.
-    // You can extend mappings as needed.
-    // -------------------------
     function htmlToDita(html) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       const body = doc.body;
-
-      // Build a simple DITA topic
       const topic = document.implementation.createDocument('', '', null).createElement('topic');
       const title = document.createElement('title');
-      // If first child is an H1 or H2, use as title
-      const h1 = body.querySelector('h1, h2');
-      if (h1) {
-        title.textContent = h1.textContent.trim();
-        // Remove the heading from body copy so it doesn't duplicate
-        h1.remove();
-      } else {
-        title.textContent = 'Generated topic';
-      }
+      const h1 = body.querySelector('h1,h2');
+      title.textContent = h1 ? h1.textContent.trim() : 'Generated topic';
+      if(h1) h1.remove();
       topic.appendChild(title);
-
       const shortdesc = document.createElement('shortdesc');
       const firstPara = body.querySelector('p');
       shortdesc.textContent = firstPara ? firstPara.textContent.trim() : '';
       topic.appendChild(shortdesc);
-
       const bodyElem = document.createElement('body');
-
-      Array.from(body.childNodes).forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          const text = node.textContent.trim();
-          if (text) {
-            const p = document.createElement('p');
-            p.textContent = text;
-            bodyElem.appendChild(p);
-          }
-          return;
-        }
-        if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-        const tag = node.tagName.toLowerCase();
-        if (tag === 'p' || tag === 'div') {
-          const p = document.createElement('p');
-          // convert inline formatting
-          p.innerHTML = node.innerHTML
-            .replace(/<strong>(.*?)<\/strong>/g, '<b>$1</b>')
-            .replace(/<b>(.*?)<\/b>/g, '<b>$1</b>')
-            .replace(/<em>(.*?)<\/em>/g, '<i>$1</i>')
-            .replace(/<i>(.*?)<\/i>/g, '<i>$1</i>')
-            .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>');
-          bodyElem.appendChild(p);
-        } else if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
-          const sec = document.createElement('section');
-          const st = document.createElement('title');
-          st.textContent = node.textContent.trim();
-          sec.appendChild(st);
-          bodyElem.appendChild(sec);
-        } else if (tag === 'ul' || tag === 'ol') {
-          const list = document.createElement('section');
-          const listTag = document.createElement('p');
-          listTag.textContent = (tag === 'ul') ? 'Unordered list' : 'Ordered list';
-          list.appendChild(listTag);
-          Array.from(node.querySelectorAll('li')).forEach(li => {
-            const p = document.createElement('p');
-            p.textContent = li.textContent;
-            list.appendChild(p);
-          });
-          bodyElem.appendChild(list);
-        } else if (tag === 'blockquote') {
-          const p = document.createElement('p');
-          p.setAttribute('outputclass', 'quote');
-          p.textContent = node.textContent;
-          bodyElem.appendChild(p);
-        } else {
-          // fallback: wrap text
-          const p = document.createElement('p');
-          p.textContent = node.textContent;
-          bodyElem.appendChild(p);
-        }
-      });
-
+      Array.from(body.childNodes).forEach(node => { if(node.nodeType===Node.ELEMENT_NODE){ const p=document.createElement('p'); p.textContent=node.textContent; bodyElem.appendChild(p); } });
       topic.appendChild(bodyElem);
-
-      // Serialize
       const serializer = new XMLSerializer();
-      // add XML declaration and pretty print
-      const xmlString = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializer.serializeToString(topic);
-      return formatXml(xmlString);
+      return '<?xml version="1.0" encoding="UTF-8"?>\n'+serializer.serializeToString(topic);
     }
 
-    // Utility: convert DITA XML -> HTML (simple mapping)
     function ditaToHtml(xml) {
       try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, 'application/xml');
-        if (doc.querySelector('parsererror')) throw new Error('XML parse error');
-
-        const topic = doc.documentElement;
-        const title = topic.querySelector('title') ? topic.querySelector('title').textContent : '';
-        const shortdesc = topic.querySelector('shortdesc') ? topic.querySelector('shortdesc').textContent : '';
-        const body = topic.querySelector('body');
-
-        let html = '';
-        if (title) html += `<h1>${escapeHtml(title)}</h1>`;
-        if (shortdesc) html += `<p><em>${escapeHtml(shortdesc)}</em></p>`;
-
-        if (body) {
-          Array.from(body.children).forEach(child => {
-            const tag = child.tagName.toLowerCase();
-            if (tag === 'p') html += `<p>${child.innerHTML}</p>`;
-            else if (tag === 'section') {
-              const t = child.querySelector('title');
-              if (t) html += `<h2>${escapeHtml(t.textContent)}</h2>`;
-              // append other p children
-              Array.from(child.querySelectorAll('p')).forEach(p => html += `<p>${escapeHtml(p.textContent)}</p>`);
-            } else {
-              html += `<p>${escapeHtml(child.textContent)}</p>`;
-            }
-          });
-        }
+        const parser=new DOMParser();
+        const doc=parser.parseFromString(xml,'application/xml');
+        if(doc.querySelector('parsererror')) throw new Error('Parse error');
+        let html='';
+        if(doc.querySelector('title')) html+='<h1>'+doc.querySelector('title').textContent+'</h1>';
+        if(doc.querySelector('shortdesc')) html+='<p><em>'+doc.querySelector('shortdesc').textContent+'</em></p>';
+        if(doc.querySelector('body')) doc.querySelectorAll('body p').forEach(p=>html+='<p>'+p.textContent+'</p>');
         return html;
-      } catch (e) {
-        console.warn('Failed to parse DITA -> HTML', e);
-        return '<p><em>Invalid DITA XML — fix XML to sync to rich text.</em></p>';
-      }
+      }catch(e){return '<p><em>Invalid DITA XML</em></p>';}
     }
 
-    // small helpers
-    function escapeHtml(s){ return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+    let ignoreNextRich=false, ignoreNextXml=false;
+    quill.on('text-change',()=>{ if(ignoreNextRich){ignoreNextRich=false;return;} const dita=htmlToDita(quill.root.innerHTML); ignoreNextXml=true; aceEditor.setValue(dita,-1); });
+    let xmlChangeTimer=null;
+    aceEditor.session.on('change',()=>{ if(ignoreNextXml){ignoreNextXml=false;return;} if(xmlChangeTimer) clearTimeout(xmlChangeTimer); xmlChangeTimer=setTimeout(()=>{ const html=ditaToHtml(aceEditor.getValue()); ignoreNextRich=true; quill.root.innerHTML=html; },500); });
 
-    // pretty print xml (simple)
-    function formatXml(xml) {
-      const PADDING = '  ';
-      const reg = /(>)(<)(\/?)/g;
-      let xmlString = xml.replace(reg, '$1\n$2$3');
-      let pad = 0;
-      return xmlString.split('\n').map((node) => {
-        let indent = 0;
-        if (node.match(/.+<[^\/].*>.*$/)) {
-          indent = 0;
-        } else if (node.match(/^<\/.+>/)) {
-          if (pad !== 0) pad -= 1;
-        }
-        const padding = PADDING.repeat(pad);
-        const result = padding + node;
-        if (node.match(/<[^\/].*>.*$/) && !node.match(/<.*\/>/)) {
-          pad += 1;
-        }
-        return result;
-      }).join('\n');
-    }
+    const sampleHtml='<h1>Sample topic</h1><p>This is a short intro.</p>';
+    quill.root.innerHTML=sampleHtml;
+    aceEditor.setValue(htmlToDita(sampleHtml),-1);
 
-    // -------------------------
-    // Sync logic
-    // - Rich -> XML when rich editor changes
-    // - XML -> Rich when xml editor changes (with debounce)
-    // Avoid infinite loops by using flags
-    // -------------------------
-    let ignoreNextRich = false;
-    let ignoreNextXml = false;
-
-    quill.on('text-change', () => {
-      if (ignoreNextRich) { ignoreNextRich = false; return; }
-      const html = quill.root.innerHTML;
-      const dita = htmlToDita(html);
-      ignoreNextXml = true;
-      aceEditor.setValue(dita, -1);
+    // Download HTML
+    document.getElementById('downloadHtmlBtn').addEventListener('click',()=>{
+      const htmlContent=quill.root.innerHTML;
+      const blob=new Blob([htmlContent],{type:'text/html'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='document.html';
+      a.click();
     });
 
-    let xmlChangeTimer = null;
-    aceEditor.session.on('change', () => {
-      if (ignoreNextXml) { ignoreNextXml = false; return; }
-      if (xmlChangeTimer) clearTimeout(xmlChangeTimer);
-      xmlChangeTimer = setTimeout(() => {
-        const xml = aceEditor.getValue();
-        const html = ditaToHtml(xml);
-        ignoreNextRich = true;
-        quill.root.innerHTML = html;
-      }, 500);
+    // Download PDF
+    document.getElementById('downloadPdfBtn').addEventListener('click',()=>{
+      const { jsPDF }=window.jspdf;
+      const pdf=new jsPDF();
+      pdf.html(quill.root,{callback:function(doc){ doc.save('document.pdf'); }});
     });
-
-    // Initialize with a sample topic
-    const sampleHtml = `<h1>Sample topic</h1><p>This is a short intro describing the topic.</p><h2>Details</h2><p>Here you can add more details, <strong>bold text</strong>, <em>italics</em> and lists:</p><ul><li>First item</li><li>Second item</li></ul>`;
-    quill.root.innerHTML = sampleHtml;
-    aceEditor.setValue(htmlToDita(sampleHtml), -1);
-
-    // -------------------------
-    // Gemini API integration (client-side example)
-    // WARNING: embedding API keys in client code is insecure. Prefer a server proxy.
-    // If you still want to call from the client (for testing), set `CLIENT_SIDE_GEMINI_KEY` below.
-    // -------------------------
-
-    // ***** USER ACTION: put your key here ONLY for quick local testing *****
-    // const CLIENT_SIDE_GEMINI_KEY = 'AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg'; // <--- example from user
-    // Better: leave it blank and use server proxy (see README comments below)
-    const CLIENT_SIDE_GEMINI_KEY = '';
-
-    // Simple function that calls a hypothetical Gemini REST endpoint.
-    // NOTE: Google/PaLM/Gemini APIs may have different request shapes. Update body as required.
-    async function callGemini(prompt) {
-      if (!CLIENT_SIDE_GEMINI_KEY) throw new Error('No client-side key set. Configure CLIENT_SIDE_GEMINI_KEY or use a server proxy.');
-      // Example endpoint — this may need to be changed to match the exact Gemini REST path for your project.
-      const endpoint = 'https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generate';
-
-      const body = {
-        "prompt": {
-          "text": prompt
-        },
-        "maxOutputTokens": 512
-      };
-
-      const resp = await fetch(endpoint + '?key=' + encodeURIComponent(CLIENT_SIDE_GEMINI_KEY), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (!resp.ok) {
-        const t = await resp.text();
-        throw new Error('Gemini API error: ' + resp.status + ' / ' + t);
-      }
-      const data = await resp.json();
-      // Map response to text: adjust based on real response shape
-      // For text-bison style responses: data.candidates[0].content
-      if (data.candidates && data.candidates.length) return data.candidates[0].content;
-      if (data.output && data.output[0] && data.output[0].content) return data.output[0].content;
-      // fallback (stringify)
-      return JSON.stringify(data);
-    }
-
-    // Server proxy example (recommended): POST /api/gemini { prompt }
-    // Your server stores the API key and forwards the request to the Gemini API, returning generated text.
-    async function callGeminiViaProxy(prompt) {
-      const resp = await fetch('/api/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt })
-      });
-      if (!resp.ok) { const t = await resp.text(); throw new Error('Proxy error: ' + resp.status + ' / ' + t); }
-      const data = await resp.json();
-      return data.text || data.output || JSON.stringify(data);
-    }
-
-    // Hook up Generate button
-    document.getElementById('generateBtn').addEventListener('click', async () => {
-      const prompt = document.getElementById('promptInput').value.trim();
-      if (!prompt) return alert('Please type a prompt.');
-
-      const btn = document.getElementById('generateBtn');
-      btn.disabled = true; btn.textContent = 'Generating...';
-
-      try {
-        // Prefer proxy — try proxy first, fall back to client-side gemini if configured
-        let generated;
-        try {
-          generated = await callGeminiViaProxy(prompt);
-        } catch (e) {
-          console.warn('Proxy failed or not configured — trying client-side key (not secure).', e);
-          generated = await callGemini(prompt);
-        }
-
-        // Insert into rich editor (appending) and update DITA view
-        quill.focus();
-        const currentLength = quill.getLength();
-        quill.insertText(currentLength - 1, '\n\n');
-        quill.clipboard.dangerouslyPasteHTML(currentLength - 1, '<p>' + generated.replace(/\n/g, '<br>') + '</p>');
-
-        // trigger sync by manually converting current HTML -> DITA
-        const dita = htmlToDita(quill.root.innerHTML);
-        aceEditor.setValue(dita, -1);
-      } catch (err) {
-        console.error(err);
-        alert('Generation failed: ' + (err.message || err));
-      } finally {
-        btn.disabled = false; btn.textContent = 'Generate';
-      }
-    });
-
-    // Helpful README comments for user (shown in console)
-    console.log('\nDITA Editor ready. Notes:');
-    console.log('- To use Gemini safely, create a server endpoint /api/generate that holds your API key and forwards prompt requests.');
-    console.log('- If you want quick local testing, set CLIENT_SIDE_GEMINI_KEY in the HTML source, but do NOT push that to a public repo.');
-    console.log('- Button color is set to #4CAF50 as requested.');
-
   </script>
 </body>
 </html>
