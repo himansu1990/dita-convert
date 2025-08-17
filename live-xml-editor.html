@@ -66,7 +66,7 @@
   </div>
 
   <script>
-    const apiKey = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg"; // Replace with your key
+    const apiKey = "YOUR_GEMINI_API_KEY"; // Replace with your key
 
     // Allow pressing Enter in input to trigger AI
     document.getElementById("promptInput").addEventListener("keydown", function(e) {
@@ -108,25 +108,20 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      const outputContent = document.getElementById("output").value || "No content available.";
-
-      // Try to extract <title> from DITA XML
-      let titleMatch = outputContent.match(/<title>(.*?)<\/title>/i);
-      const title = titleMatch ? titleMatch[1] : "DITA Editor Export";
-
-      // Sanitize filename (remove invalid chars)
-      const safeFileName = title.replace(/[^a-z0-9_\- ]/gi, "_") + ".pdf";
+      const title = "DITA Editor Export"; 
+      const content = document.getElementById("output").value || "No content available.";
 
       // Page margins
       const marginX = 15;
       const marginY = 20;
 
       // Split content into pages if long
-      const lines = doc.splitTextToSize(outputContent, 180);
+      const lines = doc.splitTextToSize(content, 180);
 
+      // Add header + footer to each page
       let pageHeight = doc.internal.pageSize.height;
-      let y = marginY + 10; 
 
+      let y = marginY + 10; 
       for (let i = 0; i < lines.length; i++) {
         if (y > pageHeight - 20) {
           addHeaderFooter(doc, title);
@@ -138,7 +133,7 @@
       }
       addHeaderFooter(doc, title); // add to last page
 
-      doc.save(safeFileName);
+      doc.save("dita-output.pdf");
     }
 
     function addHeaderFooter(doc, title) {
@@ -149,7 +144,7 @@
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
 
-        // Header (dynamic title from XML)
+        // Header
         doc.setFontSize(10);
         doc.text(title, pageWidth / 2, 10, { align: "center" });
 
