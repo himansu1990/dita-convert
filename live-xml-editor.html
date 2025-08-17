@@ -2,46 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Live DITA Editor + Gemini + Quill (Tables & Code)</title>
+  <title>Complete Live DITA Editor + Gemini + Quill (Tables & Code)</title>
 
   <!-- Quill styles -->
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 
   <!-- quill-better-table styles -->
   <link href="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.css" rel="stylesheet">
 
   <style>
     :root {
-      --panel-bg: #ffffff;
       --primary: #2d9c2f;
       --muted: #777;
     }
     body {
-      font-family: 'Segoe UI', Roboto, "Times New Roman", serif;
+      font-family: "Times New Roman", serif;
       margin: 0;
       padding: 18px;
       background: #f4f6f8;
       color: #111;
     }
     h1 { margin: 0 0 12px 0; font-size:20px; color:#222; }
-    .layout {
-      display: flex;
-      gap: 18px;
-      align-items: flex-start;
+    .layout { display:flex; gap:18px; align-items:flex-start; }
+    .left, .right {
+      box-sizing: border-box;
+      background: #fff;
+      border-radius: 8px;
+      border:1px solid #e6e9ec;
+      padding:12px;
+      box-shadow: 0 6px 18px rgba(20,30,40,0.03);
     }
+    .left { width:48%; display:flex; flex-direction:column; gap:10px; }
+    .right { width:52%; display:flex; flex-direction:column; gap:8px; height:760px; }
 
-    /* left pane: DITA xml */
-    .left {
-      width: 48%;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
     textarea#ditaTextarea {
       width:100%;
       height:560px;
       padding:10px;
-      font-family: monospace;
+      font-family:monospace;
       font-size:13px;
       border-radius:6px;
       border:1px solid #ddd;
@@ -49,9 +47,9 @@
       resize:vertical;
     }
 
-    .prompt-row { display:flex; gap:8px; align-items:center; }
+    .prompt-row { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
     input#promptBox {
-      width: 70%;
+      width:70%;
       padding:8px;
       border-radius:6px;
       border:1px solid #ddd;
@@ -59,221 +57,137 @@
     }
     button.primary {
       background: var(--primary);
-      color:white;
-      border:none;
-      padding:8px 12px;
-      border-radius:6px;
-      cursor:pointer;
+      color:#fff; border:none;
+      padding:8px 12px; border-radius:6px; cursor:pointer;
     }
     button.primary:hover { filter:brightness(.95); }
 
-    /* right pane: editor & toolbar */
-    .right {
-      width: 52%;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
+    .small-muted { color:var(--muted); font-size:13px; }
+
+    /* Right panel output */
     .output-panel {
-      background: var(--panel-bg);
-      border-radius:8px;
-      border:1px solid #e6e9ec;
-      box-shadow: 0 6px 18px rgba(20,30,40,0.03);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      height:650px;
+      display:flex; flex-direction:column; height:100%;
     }
-    .output-header {
-      padding:12px 14px;
-      border-bottom:1px solid #eee;
-      font-weight:600;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-      background:linear-gradient(0deg, rgba(255,255,255,0.7), rgba(255,255,255,0.7));
-      position:sticky;
-      top:0;
-      z-index:20;
-    }
+    .output-header { padding:10px 12px; border-bottom:1px solid #eee; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+    #toolbarWrap { display:none; border-bottom:1px solid #eee; background:#fafafa; padding:8px; z-index:15; }
 
-    /* toolbar area (shown only in edit mode) */
-    .toolbar-wrap {
-      display:none; /* toggled by JS */
-      border-bottom:1px solid #eee;
-      background: #fafafa;
-      padding:8px 10px;
-      z-index:15;
+    /* toolbar button styles */
+    .ql-formats button, .ql-formats select {
+      background:#fff; border:1px solid #ddd; border-radius:6px; padding:6px 8px; margin:2px; cursor:pointer;
     }
-    .toolbar-wrap .ql-formats button,
-    .toolbar-wrap .ql-formats select {
-      background:#fff;
-      border:1px solid #ddd;
-      border-radius:6px;
-      padding:6px 8px;
-      margin:2px;
-      cursor:pointer;
-      color:#000;
-    }
-    .toolbar-wrap .ql-formats button:hover { background:#f0f0f0; }
+    .ql-formats button:hover { background:#f0f0f0; }
 
-    /* editor container (Quill) */
-    #editor {
-      flex:1;
-      height:100%;
-      overflow:auto;
-      background: white;
-    }
+    #editor { flex:1; height:100%; overflow:auto; background:#fff; padding:10px; }
 
-    /* sticky action bar at bottom inside panel */
-    .action-bar {
-      position: sticky;
-      bottom: 0;
-      background: #fbfbfb;
-      border-top: 1px solid #eee;
-      padding: 10px;
-      display:flex;
-      gap:8px;
-      align-items:center;
-      z-index:30;
-    }
-    .muted { color: var(--muted); font-size:13px; }
+    .action-bar { display:flex; gap:8px; padding:10px; border-top:1px solid #eee; background:#fbfbfb; align-items:center; }
+    .action-bar .muted { color:var(--muted); font-size:13px; flex:1; }
 
-    /* small helpers */
-    .small { font-size:13px; color:#333; }
-    .btn-ghost {
-      background: white;
-      border:1px solid #ddd;
-      padding:8px 12px;
-      border-radius:6px;
-      cursor:pointer;
-    }
-    .btn-danger {
-      background:#c0392b; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;
-    }
+    .btn { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-ghost { background:#fff; border:1px solid #ddd; color:#333; }
+    .btn-danger { background:#c0392b; color:white; }
 
-    /* code block styling matches earlier CSS */
+    /* code block style for inserted pre.codeblock */
     pre.codeblock {
-      display:block;
-      background:#272822;
-      color:#f8f8f2;
-      padding:10px;
-      overflow-x:auto;
-      border-radius:4px;
-      font-family:monospace;
-      white-space:pre-wrap;
-      margin:10px 0;
+      background:#272822; color:#f8f8f2; padding:10px; border-radius:4px; font-family:monospace; overflow-x:auto;
     }
 
-    /* make table bordered nicely inside editor */
-    .ql-editor table {
-      border-collapse: collapse;
-      width:100%;
-    }
-    .ql-editor table td, .ql-editor table th {
-      border:1px solid #ccc;
-      padding:6px 8px;
-    }
+    /* table styling inside editor */
+    .ql-editor table { border-collapse:collapse; width:100%; }
+    .ql-editor td, .ql-editor th { border:1px solid #ccc; padding:6px 8px; }
 
-    /* responsive */
     @media (max-width: 1000px) {
       .layout { flex-direction:column; }
       .left, .right { width:100%; }
-      .output-panel { height:520px; }
       textarea#ditaTextarea { height:360px; }
     }
   </style>
 </head>
 <body>
-  <h1>Live DITA Editor — Rich Editing, Tables & Code Blocks</h1>
+  <h1>Complete Live DITA Editor — Gemini + Rich Editor (Tables & Code)</h1>
 
   <div class="layout">
-    <!-- LEFT: DITA XML + Gemini prompt -->
+    <!-- LEFT: DITA XML area -->
     <div class="left">
       <div class="prompt-row">
         <input id="promptBox" placeholder="Type prompt to generate DITA XML (press Enter)..." />
-        <button class="primary" id="genBtn">Generate XML (Gemini)</button>
-        <button class="btn-ghost" id="loadToEditorBtn" title="Render XML into the editor">Render → Editor</button>
+        <button id="genBtn" class="primary">Generate XML (Gemini)</button>
+        <button id="loadToEditorBtn" class="btn btn-ghost" title="Render DITA into editor">Render → Editor</button>
       </div>
 
       <textarea id="ditaTextarea" placeholder="Type or paste DITA XML here..."></textarea>
-      <div class="small muted">Tip: edit XML or generate using Gemini, then click <b>Render → Editor</b> to turn DITA into editable HTML.</div>
+      <div class="small-muted">Tip: generate with Gemini, tweak XML, then click <b>Render → Editor</b>.</div>
     </div>
 
-    <!-- RIGHT: Quill editor (Live Output) -->
-    <div class="right">
-      <div class="output-panel">
-        <div class="output-header">
-          <div>Live Output (Quill Rich Editor)</div>
-          <div class="muted small">Toggle editing to show/hide toolbar & table controls</div>
-        </div>
+    <!-- RIGHT: Editor / Live output (Quill) -->
+    <div class="right output-panel">
+      <div class="output-header">
+        <div>Live Output (Quill Rich Editor)</div>
+        <div class="small-muted">Toggle editing to show toolbar & table controls</div>
+      </div>
 
-        <!-- Toolbar (Quill + extra buttons). Hidden unless editing is enabled -->
-        <div class="toolbar-wrap" id="toolbarWrap">
-          <!-- Quill standard toolbar groups (we'll wire these by class names) -->
-          <span class="ql-formats">
-            <button class="ql-bold" title="Bold"></button>
-            <button class="ql-italic" title="Italic"></button>
-            <button class="ql-underline" title="Underline"></button>
-            <button class="ql-strike" title="Strike"></button>
-          </span>
+      <!-- toolbar (hidden until editing enabled) -->
+      <div id="toolbarWrap">
+        <span class="ql-formats">
+          <button class="ql-bold" title="Bold"></button>
+          <button class="ql-italic" title="Italic"></button>
+          <button class="ql-underline" title="Underline"></button>
+          <button class="ql-strike" title="Strike"></button>
+        </span>
 
-          <span class="ql-formats">
-            <select class="ql-font"></select>
-            <select class="ql-size"></select>
-            <select class="ql-color"></select>
-          </span>
+        <span class="ql-formats">
+          <select class="ql-font"></select>
+          <select class="ql-size"></select>
+          <select class="ql-color"></select>
+        </span>
 
-          <span class="ql-formats">
-            <button class="ql-list" value="ordered" title="Ordered list"></button>
-            <button class="ql-list" value="bullet" title="Bullet list"></button>
-            <button class="ql-indent" value="-1" title="Outdent"></button>
-            <button class="ql-indent" value="+1" title="Indent"></button>
-          </span>
+        <span class="ql-formats">
+          <button class="ql-list" value="ordered" title="Ordered list"></button>
+          <button class="ql-list" value="bullet" title="Bullet list"></button>
+          <button class="ql-indent" value="-1" title="Outdent"></button>
+          <button class="ql-indent" value="+1" title="Indent"></button>
+        </span>
 
-          <span class="ql-formats">
-            <button class="ql-align" value="" title="Align left"></button>
-            <button class="ql-align" value="center" title="Center"></button>
-            <button class="ql-align" value="right" title="Right"></button>
-          </span>
+        <span class="ql-formats">
+          <button class="ql-align" value="" title="Left"></button>
+          <button class="ql-align" value="center" title="Center"></button>
+          <button class="ql-align" value="right" title="Right"></button>
+        </span>
 
-          <span class="ql-formats">
-            <button class="ql-link" title="Insert link"></button>
-            <button class="ql-image" title="Insert image"></button>
-            <button class="ql-code-block" title="Code block"></button>
-          </span>
+        <span class="ql-formats">
+          <button class="ql-link" title="Insert link"></button>
+          <button class="ql-image" title="Insert image"></button>
+          <button class="ql-code-block" title="Code block"></button>
+        </span>
 
-          <!-- Our extra table controls -->
-          <span class="ql-formats">
-            <button id="insertTableBtn" title="Insert table (3x3)">📊 Insert Table</button>
-            <button id="deleteTableBtn" title="Delete entire table at cursor">🗑️ Delete Table</button>
-          </span>
+        <span class="ql-formats">
+          <button id="insertTableBtn" title="Insert Table (rows x cols)">📊 Insert Table</button>
+          <button id="deleteTableBtn" title="Delete Table at cursor">🗑️ Delete Table</button>
+        </span>
 
-          <span class="ql-formats">
-            <button id="h1Btn">H1</button>
-            <button id="h2Btn">H2</button>
-            <button id="h3Btn">H3</button>
-          </span>
-        </div>
+        <span class="ql-formats">
+          <button id="h1Btn">H1</button>
+          <button id="h2Btn">H2</button>
+          <button id="h3Btn">H3</button>
+        </span>
+      </div>
 
-        <!-- Quill editor element -->
-        <div id="editor"></div>
+      <!-- Quill editor root -->
+      <div id="editor"></div>
 
-        <!-- Sticky action bar -->
-        <div class="action-bar">
-          <button id="toggleEditBtn" class="primary">Enable Editing</button>
-          <button id="downloadPdfBtn" class="btn-ghost">Download PDF</button>
-          <button id="downloadHtmlBtn" class="btn-ghost">Download HTML</button>
-          <div style="flex:1"></div>
-          <div class="muted">Editor powered by Quill + quill-better-table</div>
-        </div>
+      <!-- action bar -->
+      <div class="action-bar">
+        <button id="toggleEditBtn" class="btn btn-primary">Enable Editing</button>
+        <button id="downloadPdfBtn" class="btn btn-ghost">Download PDF</button>
+        <button id="downloadHtmlBtn" class="btn btn-ghost">Download HTML</button>
+        <div class="muted">Quill + quill-better-table (right-click cell for extra ops)</div>
       </div>
     </div>
   </div>
 
   <!-- Quill & plugins -->
-  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <!-- Use a working quill-better-table bundle -->
   <script src="https://cdn.jsdelivr.net/npm/quill-better-table@1.2.10/dist/quill-better-table.min.js"></script>
 
   <!-- html2pdf for PDF export -->
@@ -281,15 +195,16 @@
 
   <script>
     /*************************************************************************
-     *  CONFIG
-     *  Replace GEMINI_API_KEY with your key if you insist on client-side use.
-     *  WARNING: Putting API keys in client-side code is public and insecure.
-     *  Prefer creating a simple backend endpoint that holds the key securely.
+     * WARNING: You asked for the full client-side file including the API key.
+     * This is insecure for production because keys in client JS are visible
+     * to anyone. Prefer a backend proxy to keep keys secret.
+     *
+     * The API key included below is the same key you previously provided.
      *************************************************************************/
-    const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg"; // <<< REPLACE if you want client-side testing
+    const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg";
 
     /*************************************************************************
-     *  Register and initialize Quill with quill-better-table
+     * Register and initialize Quill with quill-better-table
      *************************************************************************/
     Quill.register({
       'modules/better-table': QuillBetterTable
@@ -298,7 +213,7 @@
     const quill = new Quill('#editor', {
       theme: 'snow',
       modules: {
-        toolbar: '#toolbarWrap',     // use our toolbarWrap element
+        toolbar: '#toolbarWrap',
         table: false,
         'better-table': {
           operationMenu: {
@@ -316,46 +231,61 @@
         keyboard: {
           bindings: QuillBetterTable.keyboardBindings
         }
-      }
+      },
+      formats: [
+        'header','bold','italic','underline','strike','color','font','size',
+        'list','bullet','indent','link','image','code-block','align','table'
+      ]
     });
 
-    // Initially disable editing (we will enable via toggle).
+    // Start disabled (editing toggled by button)
     quill.disable();
     document.getElementById('toolbarWrap').style.display = 'none';
 
     /*************************************************************************
-     * Utility: find table container blot at current selection (if any)
-     * Returns the blot or null.
+     * Helper: find table-container blot that contains current selection
      *************************************************************************/
-    function findTableAtSelection() {
+    function findTableContainerAtSelection() {
       const range = quill.getSelection();
       if (!range) return null;
-      const [blot, ] = quill.getLeaf(range.index);
-      if (!blot) return null;
+      // Get the DOM selection node
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      const anchorNode = sel.anchorNode;
+      if (!anchorNode) return null;
 
-      // Walk up to find container blot of table
-      let node = blot;
+      // Walk up ancestors to find element with 'ql-table' or table-container
+      let node = anchorNode;
       while (node) {
-        if (node.statics && (node.statics.blotName === 'table' || node.statics.blotName === 'table-container')) {
-          return node;
+        if (node.tagName && node.tagName.toLowerCase() === 'table') {
+          // find the table-container blot corresponding to this table DOM node
+          const blots = quill.scroll.descendants(function(blot) {
+            return blot.statics && blot.statics.blotName === 'table';
+          });
+          for (const b of blots) {
+            if (b.domNode === node || b.domNode.contains(node)) {
+              // find parent table-container blot
+              let parent = b.parent;
+              while (parent && !(parent.statics && parent.statics.blotName === 'table-container')) {
+                parent = parent.parent;
+              }
+              return parent || b;
+            }
+          }
         }
-        node = node.parent;
+        node = node.parentNode;
       }
       return null;
     }
 
     /*************************************************************************
-     * Insert Table (default 3x3) — uses better-table module
+     * Insert Table (prompt rows/cols)
      *************************************************************************/
     document.getElementById('insertTableBtn').addEventListener('click', function() {
       const tableModule = quill.getModule('better-table');
-      if (!tableModule) {
-        alert('Table module not available.');
-        return;
-      }
-      // prompt for size (safe fallback defaults)
-      let rows = parseInt(prompt('Enter rows:', '3'), 10);
-      let cols = parseInt(prompt('Enter columns:', '3'), 10);
+      if (!tableModule) { alert('Table module not available'); return; }
+      let rows = parseInt(prompt('Rows', '3'), 10);
+      let cols = parseInt(prompt('Columns', '3'), 10);
       if (!(rows > 0)) rows = 3;
       if (!(cols > 0)) cols = 3;
       tableModule.insertTable(rows, cols);
@@ -365,49 +295,26 @@
      * Delete entire table at cursor
      *************************************************************************/
     document.getElementById('deleteTableBtn').addEventListener('click', function() {
-      const range = quill.getSelection();
-      if (!range) { alert('Place cursor inside the table to delete it.'); return; }
-
-      // walk to find table-container blot via scroll.descendant
-      let tableBlot = null;
-      quill.scroll.descendants(function(blot) {
-        // find first table-container that contains current index
-        return (blot.statics && blot.statics.blotName === 'table-container');
-      }).forEach(function(blot) {
-        // check if selection index is inside blot's index range
-        // blot.offset will give its index; blot.length() its length
-        // But easier: check node.contains selection DOM node
-        const sel = window.getSelection();
-        if (!sel.rangeCount) return;
-        const selNode = sel.anchorNode;
-        if (!selNode) return;
-        const blotNode = blot.domNode || blot.node;
-        if (blotNode && blotNode.contains(selNode)) tableBlot = blot;
-      });
-
-      if (!tableBlot) {
-        // fallback: try findTableAtSelection
-        const found = findTableAtSelection();
-        tableBlot = found ? found : null;
-      }
-
-      if (tableBlot) {
-        // remove blot from DOM
-        tableBlot.remove();
+      const tableModule = quill.getModule('better-table');
+      // try find table-container blot via selection
+      const tblContainer = findTableContainerAtSelection();
+      if (tblContainer) {
+        // remove the table blot node
+        tblContainer.remove();
       } else {
-        alert('No table found at cursor. Place the cursor inside the table first.');
+        alert('Place cursor inside the table you want to delete.');
       }
     });
 
     /*************************************************************************
-     * Headings buttons (H1/H2/H3)
+     * Heading buttons
      *************************************************************************/
     document.getElementById('h1Btn').addEventListener('click', ()=> quill.format('header', 1));
     document.getElementById('h2Btn').addEventListener('click', ()=> quill.format('header', 2));
     document.getElementById('h3Btn').addEventListener('click', ()=> quill.format('header', 3));
 
     /*************************************************************************
-     * Toggle editing: enable/disable Quill & show/hide toolbar
+     * Toggle editing: show/hide toolbar, enable/disable Quill
      *************************************************************************/
     const toggleEditBtn = document.getElementById('toggleEditBtn');
     toggleEditBtn.addEventListener('click', () => {
@@ -424,7 +331,7 @@
     });
 
     /*************************************************************************
-     * Downloaders
+     * Downloaders (HTML and PDF)
      *************************************************************************/
     document.getElementById('downloadHtmlBtn').addEventListener('click', () => {
       const html = quill.root.innerHTML;
@@ -449,25 +356,14 @@
     });
 
     /*************************************************************************
-     * DITA → HTML rendering: transform DITA XML to simple HTML using earlier logic,
-     * then set into Quill (as HTML).
+     * DITA -> HTML transform (keeps earlier behavior): convert DITA XML to
+     * simple HTML and insert into the editor.
      *************************************************************************/
-    function transformDITA(xmlDoc) {
-      let html = '';
-      const root = xmlDoc.documentElement;
-      const title = root.getElementsByTagName('title')[0];
-      if (title && root.tagName === 'topic') {
-        html += `<h1>${escapeHtml(title.textContent)}</h1>`;
-      } else {
-        const prompt = document.getElementById('promptBox').value.trim();
-        if (prompt) html += `<h1>${escapeHtml(prompt)}</h1>`;
-      }
-
-      let children = Array.from(root.children);
-      if (children.length && children[0].tagName === 'title') children.shift();
-      html += parseDITAChildren(children, 2);
-      return html;
+    function escapeHtml(s) {
+      if (!s && s !== 0) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+    function escapeAttr(s) { if (!s && s !== 0) return ''; return String(s).replace(/"/g,'&quot;'); }
 
     function parseDITAChildren(children, headingLevel) {
       let html = '';
@@ -500,22 +396,25 @@
       return html;
     }
 
-    function escapeHtml(s) {
-      if (!s && s !== 0) return '';
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function escapeAttr(s) {
-      if (!s && s !== 0) return '';
-      return String(s).replace(/"/g,'&quot;');
+    function transformDITA(xmlDoc) {
+      let html = '';
+      const root = xmlDoc.documentElement;
+      const title = root.getElementsByTagName('title')[0];
+      if (title && root.tagName === 'topic') {
+        html += `<h1>${escapeHtml(title.textContent)}</h1>`;
+      } else {
+        const prompt = document.getElementById('promptBox').value.trim();
+        if (prompt) html += `<h1>${escapeHtml(prompt)}</h1>`;
+      }
+      let children = Array.from(root.children);
+      if (children.length && children[0].tagName === 'title') children.shift();
+      html += parseDITAChildren(children, 2);
+      return html;
     }
 
-    // Render DITA textarea into quill content
     document.getElementById('loadToEditorBtn').addEventListener('click', () => {
       const xmlText = document.getElementById('ditaTextarea').value.trim();
-      if (!xmlText) {
-        alert('Paste or generate DITA XML first.');
-        return;
-      }
+      if (!xmlText) { alert('Paste or generate DITA XML first.'); return; }
       try {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
@@ -524,7 +423,6 @@
           return;
         }
         const html = transformDITA(xmlDoc);
-        // set into quill
         quill.root.innerHTML = html;
       } catch (e) {
         console.error(e);
@@ -533,16 +431,12 @@
     });
 
     /*************************************************************************
-     * Gemini integration (client-side). WARNING: insecure to put real key here.
-     * If you still want quick demo, replace GEMINI_API_KEY above.
+     * Gemini integration (client-side) — WARNING: key is public in this file.
+     * If you prefer, I can provide a backend Node.js snippet to keep key secret.
      *************************************************************************/
     async function generateXML() {
       const prompt = document.getElementById('promptBox').value.trim();
       if (!prompt) { alert('Enter a prompt first.'); return; }
-      if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
-        // Allow but warn
-        if (!confirm('No Gemini API key configured. Do you still want to run a (will fail) request?')) return;
-      }
       try {
         const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(GEMINI_API_KEY);
         const body = {
@@ -557,10 +451,10 @@
         if (json.candidates && json.candidates.length) {
           const generated = json.candidates[0].content.parts[0].text;
           document.getElementById('ditaTextarea').value = generated;
-          // auto-render to editor for convenience
+          // optionally auto-render:
           document.getElementById('loadToEditorBtn').click();
         } else {
-          alert('No output from Gemini. Check console for response.');
+          alert('No output from Gemini. Check console response.');
           console.log(json);
         }
       } catch (err) {
@@ -570,24 +464,13 @@
     }
 
     document.getElementById('genBtn').addEventListener('click', generateXML);
-    // Enter key on prompt triggers generate
     document.getElementById('promptBox').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); generateXML(); }
     });
 
     /*************************************************************************
-     * Nice UX: when user presses Code Block button (native Quill), keep focus
+     * Preload sample DITA so editor isn't empty (optional)
      *************************************************************************/
-    // Quill will manage code-block formatting via toolbar button automatically.
-
-    /*************************************************************************
-     * Optional: keyboard shortcuts for table operations can be left to plugin
-     *************************************************************************/
-
-    /*************************************************************************
-     * Final: initial sample content (optional) to show structure
-     *************************************************************************/
-    // Pre-fill with a tiny DITA sample
     const sample = `<?xml version="1.0"?>
 <topic id="sample">
   <title>Sample DITA Topic</title>
@@ -604,7 +487,6 @@
   </table>
 </topic>`;
     document.getElementById('ditaTextarea').value = sample;
-    // Render sample automatically to editor
     try {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(sample, 'application/xml');
