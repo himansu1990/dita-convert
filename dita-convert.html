@@ -40,6 +40,29 @@
         .toolbar-btn:hover {
             background-color: #e5e7eb; /* gray-200 */
         }
+        /* Style for the code block */
+        pre {
+            background-color: #f4f4f5;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        /* Style for tables */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col p-4 md:p-8">
@@ -77,7 +100,7 @@
                 <button class="toolbar-btn" data-command="formatBlock" data-value="H1" title="Heading 1">H1</button>
                 <button class="toolbar-btn" data-command="formatBlock" data-value="H2" title="Heading 2">H2</button>
                 <button class="toolbar-btn" data-command="formatBlock" data-value="H3" title="Heading 3">H3</button>
-                <button class="toolbar-btn" data-command="formatBlock" data-value="p" title="Paragraph">P</button>
+                <button class="toolbar-btn" data-command="formatBlock" data-value="P" title="Paragraph">P</button>
                 <button class="toolbar-btn" data-command="createLink" title="Link">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5.656 5.656a2 2 0 012.828 0l3 3a2 2 0 11-2.828 2.828l-3-3a2 2 0 010-2.828 1 1 0 00-1.414-1.414 4 4 0 000 5.656l3 3a4 4 0 005.656 0 1 1 0 00-1.414-1.414L10 12.586a2 2 0 01-2.828 0z" clip-rule="evenodd" />
@@ -87,6 +110,21 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M11 3a1 1 0 100 2h6a1 1 0 100-2h-6zM11 7a1 1 0 100 2h6a1 1 0 100-2h-6zM11 11a1 1 0 100 2h6a1 1 0 100-2h-6zM11 15a1 1 0 100 2h6a1 1 0 100-2h-6z" />
                         <path fill-rule="evenodd" d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h2a1 1 0 001-1v-5l3 2v-5l-3 2V4a1 1 0 00-1-1H4z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <button class="toolbar-btn" data-command="insertCode" title="Insert Code Block">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2a1 1 0 00-1 1v2a1 1 0 002 0V7a1 1 0 00-1-1zm6 0a1 1 0 00-1 1v8a1 1 0 002 0V7a1 1 0 00-1-1zm-3 0a1 1 0 00-1 1v5a1 1 0 002 0V7a1 1 0 00-1-1zm8 0a1 1 0 00-1 1v2a1 1 0 002 0V7a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <button class="toolbar-btn" data-command="insertImage" title="Insert Image">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4.5-4.5 3.107 3.107 1.414-1.414L16 11.232V15zM11 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <button class="toolbar-btn" data-command="insertTable" title="Insert Table">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 00-1 1v4H3a1 1 0 100 2h6v4H3a1 1 0 100 2h6v4a1 1 0 102 0v-4h6a1 1 0 100-2h-6V9h6a1 1 0 100-2h-6V3a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
                 </button>
             </div>
@@ -202,6 +240,44 @@
                             });
                             xmlContent += `    </ol>\n`;
                             break;
+                        case 'pre':
+                            xmlContent = `    <codeblock>${node.textContent}</codeblock>\n`;
+                            break;
+                        case 'img':
+                            xmlContent = `    <image href="${node.src}"/>\n`;
+                            break;
+                        case 'table':
+                            xmlContent = '    <table>\n      <tgroup cols="2">\n';
+                            // Get table headers
+                            const ths = node.querySelectorAll('th');
+                            if (ths.length > 0) {
+                                ths.forEach((th, index) => {
+                                    xmlContent += `        <colspec colnum="${index + 1}" colname="col${index + 1}"/>\n`;
+                                });
+                            }
+                            xmlContent += '        <thead>\n          <row>\n';
+                            ths.forEach(th => {
+                                xmlContent += `            <entry>${th.textContent}</entry>\n`;
+                            });
+                            xmlContent += '          </row>\n        </thead>\n';
+
+                            // Get table body rows
+                            const rows = node.querySelectorAll('tr');
+                            if (rows.length > 0) {
+                                xmlContent += '        <tbody>\n';
+                                // Skip the first row if there are headers
+                                const startRow = ths.length > 0 ? 1 : 0;
+                                for (let i = startRow; i < rows.length; i++) {
+                                    xmlContent += '          <row>\n';
+                                    rows[i].querySelectorAll('td').forEach(td => {
+                                        xmlContent += `            <entry>${td.textContent}</entry>\n`;
+                                    });
+                                    xmlContent += '          </row>\n';
+                                }
+                                xmlContent += '        </tbody>\n';
+                            }
+                            xmlContent += '      </tgroup>\n    </table>\n';
+                            break;
                         case 'blockquote':
                             xmlContent = `    <blockquote>${node.textContent}</blockquote>\n`;
                             break;
@@ -273,7 +349,7 @@
                             case 'p':
                                 let pContent = node.innerHTML;
                                 pContent = pContent.replace(/<bdo>(.*?)<\/bdo>/g, '<strong>$1</strong>');
-                                pContent = pContent.replace(/<emphasis>(.*?)<\/emphasis>/g, '<em>$1</em>');
+                                pContent = pContent.replace(/<emphasis>(.*?)<\/emphasis>/g, '<em>$1</i>');
                                 pContent = pContent.replace(/<ph style="text-decoration: underline;">(.*?)<\/ph>/g, '<u>$1</u>');
                                 htmlContent += `<p>${pContent}</p>`;
                                 break;
@@ -293,6 +369,30 @@
                                 break;
                             case 'ol':
                                 htmlContent += `<ol>${node.innerHTML}</ol>`;
+                                break;
+                            case 'codeblock':
+                                htmlContent += `<pre>${node.textContent}</pre>`;
+                                break;
+                            case 'image':
+                                htmlContent += `<img src="${node.getAttribute('href')}" />`;
+                                break;
+                            case 'table':
+                                let tableHtml = '<table><thead><tr>';
+                                const ths = node.querySelectorAll('colspec');
+                                ths.forEach(th => {
+                                    tableHtml += `<th>${th.getAttribute('colname')}</th>`;
+                                });
+                                tableHtml += '</tr></thead><tbody>';
+
+                                node.querySelectorAll('row').forEach(row => {
+                                    tableHtml += '<tr>';
+                                    row.querySelectorAll('entry').forEach(entry => {
+                                        tableHtml += `<td>${entry.textContent}</td>`;
+                                    });
+                                    tableHtml += '</tr>';
+                                });
+                                tableHtml += '</tbody></table>';
+                                htmlContent += tableHtml;
                                 break;
                             case 'blockquote':
                                 htmlContent += `<blockquote>${node.textContent}</blockquote>`;
@@ -366,6 +466,27 @@
                             });
                             markdown += '\n';
                             break;
+                        case 'pre':
+                            markdown += '```\n' + content + '\n```\n\n';
+                            break;
+                        case 'img':
+                            markdown += `![Image](${node.src})\n\n`;
+                            break;
+                        case 'table':
+                            let tableMd = '';
+                            const headers = Array.from(node.querySelectorAll('th')).map(th => th.textContent);
+                            if (headers.length > 0) {
+                                tableMd += '| ' + headers.join(' | ') + ' |\n';
+                                tableMd += '|' + headers.map(() => '---').join('|') + '|\n';
+                            }
+                            node.querySelectorAll('tr').forEach(tr => {
+                                const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent);
+                                if (cells.length > 0) {
+                                    tableMd += '| ' + cells.join(' | ') + ' |\n';
+                                }
+                            });
+                            markdown += tableMd + '\n';
+                            break;
                         case 'blockquote':
                             markdown += `> ${content}\n\n`;
                             break;
@@ -378,7 +499,7 @@
 
             return markdown;
         }
-        
+
         // --- Gemini AI Integration ---
         generateBtn.addEventListener('click', async () => {
             const userPrompt = aiPrompt.value.trim();
@@ -397,7 +518,7 @@
             try {
                 // Instruct the AI to respond in formatted HTML
                 const chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, h2, p, ul, ol, strong, and em tags. The prompt is: ${userPrompt}` }] });
+                chatHistory.push({ role: "user", parts: [{ text: `Generate a response in HTML format. Do not include <!DOCTYPE> or <body> tags. The HTML should be a single block of content using h1, h2, p, ul, ol, strong, em, pre, img, table, tr, th, td, and a tags. The prompt is: ${userPrompt}` }] });
                 const payload = { contents: chatHistory };
                 const apiKey = "AIzaSyDdj6VoNhgKHIh3myG_UPzfXseXRLPUldE";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -473,11 +594,40 @@
             if (button) {
                 const command = button.dataset.command;
                 const value = button.dataset.value;
-
+                
                 if (command === 'createLink') {
                     const url = prompt("Enter the URL for the link:");
                     if (url) {
                         document.execCommand(command, false, url);
+                    }
+                } else if (command === 'insertCode') {
+                    const code = prompt("Enter your code here:");
+                    if (code) {
+                        document.execCommand('insertHTML', false, `<pre>${code}</pre>`);
+                    }
+                } else if (command === 'insertImage') {
+                    const imageUrl = prompt("Enter the image URL:");
+                    if (imageUrl) {
+                        document.execCommand('insertImage', false, imageUrl);
+                    }
+                } else if (command === 'insertTable') {
+                    const rows = parseInt(prompt("Enter the number of rows:"), 10);
+                    const cols = parseInt(prompt("Enter the number of columns:"), 10);
+                    if (rows > 0 && cols > 0) {
+                        let tableHtml = '<table><thead><tr>';
+                        for (let i = 0; i < cols; i++) {
+                            tableHtml += '<th>Header</th>';
+                        }
+                        tableHtml += '</tr></thead><tbody>';
+                        for (let i = 0; i < rows; i++) {
+                            tableHtml += '<tr>';
+                            for (let j = 0; j < cols; j++) {
+                                tableHtml += '<td></td>';
+                            }
+                            tableHtml += '</tr>';
+                        }
+                        tableHtml += '</tbody></table>';
+                        document.execCommand('insertHTML', false, tableHtml);
                     }
                 } else if (command === 'formatBlock') {
                     document.execCommand(command, false, `<${value}>`);
