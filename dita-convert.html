@@ -144,8 +144,7 @@
 
         /**
          * Converts the HTML content from the rich text editor to DITA XML.
-         * This is a simplified conversion for demonstration purposes.
-         * A more robust solution would require a full DITA-OT-compliant parser.
+         * This version is more resilient to various HTML structures.
          * @param {string} htmlString - The HTML content to convert.
          * @returns {string} The formatted DITA XML string.
          */
@@ -162,10 +161,9 @@
                           '<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">\n' +
                           '<topic id="my-topic">\n';
 
-            const firstHeading = body.querySelector('h1, h2, h3');
-            if (firstHeading) {
-                ditaXml += `  <title>${firstHeading.textContent}</title>\n`;
-                firstHeading.remove();
+            const sections = body.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            if (sections.length > 0) {
+                ditaXml += `  <title>${sections[0].textContent}</title>\n`;
             } else {
                 ditaXml += '  <title>New Topic</title>\n';
             }
@@ -177,13 +175,15 @@
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     let xmlContent = '';
                     switch (node.tagName.toLowerCase()) {
-                        case 'h1': // Convert h1 to a title, although it's removed above. This is for completeness.
+                        case 'h1': // Convert h1 to a title
                         case 'h2':
                         case 'h3':
-                        case 'h4':
-                        case 'h5':
-                        case 'h6':
-                            xmlContent = `    <section>${node.textContent}</section>\n`;
+                            // The first heading is already used as the topic title.
+                            // Subsequent headings should be sections.
+                            if (node === sections[0]) {
+                                return;
+                            }
+                            xmlContent = `    <section>\n      <title>${node.textContent}</title>\n    </section>\n`;
                             break;
                         case 'p':
                             let pContent = node.innerHTML;
@@ -195,14 +195,14 @@
                         case 'ul':
                             xmlContent = `    <ul id="ul1">\n`;
                             node.querySelectorAll('li').forEach(li => {
-                                xmlContent += `      <li>${li.textContent}</li>\n`;
+                                xmlContent += `      <li>${li.innerHTML}</li>\n`;
                             });
                             xmlContent += `    </ul>\n`;
                             break;
                         case 'ol':
                             xmlContent = `    <ol id="ol1">\n`;
                             node.querySelectorAll('li').forEach(li => {
-                                xmlContent += `      <li>${li.textContent}</li>\n`;
+                                xmlContent += `      <li>${li.innerHTML}</li>\n`;
                             });
                             xmlContent += `    </ol>\n`;
                             break;
@@ -212,7 +212,16 @@
                         case 'a':
                             xmlContent = `    <xref href="${node.href}">${node.textContent}</xref>\n`;
                             break;
+                        // Handle text nodes that might be mixed with elements
+                        case '#text':
+                            if (node.textContent.trim()) {
+                                xmlContent = `    <p>${node.textContent.trim()}</p>\n`;
+                            }
+                            break;
                         // Add more cases for other DITA elements as needed
+                        default:
+                            console.warn(`Unhandled element: ${node.tagName}`);
+                            break;
                     }
                     ditaXml += xmlContent;
                 }
@@ -273,7 +282,15 @@
                                 htmlContent += `<p>${pContent}</p>`;
                                 break;
                             case 'section':
-                                htmlContent += `<h2>${node.textContent}</h2>`;
+                                htmlContent += `<h2>${node.querySelector('title')?.textContent || ''}</h2>`;
+                                // Process all other children of the section
+                                node.childNodes.forEach(sectionChild => {
+                                    if (sectionChild.nodeType === Node.ELEMENT_NODE) {
+                                        if (sectionChild.tagName.toLowerCase() !== 'title') {
+                                            htmlContent += sectionChild.outerHTML; // Append the rest of the section's content
+                                        }
+                                    }
+                                });
                                 break;
                             case 'ul':
                                 htmlContent += `<ul>${node.innerHTML}</ul>`;
@@ -287,7 +304,14 @@
                             case 'xref':
                                 htmlContent += `<a href="${node.getAttribute('href')}">${node.textContent}</a>`;
                                 break;
+                            // Handle list items that might be direct children of the body
+                            case 'li':
+                                htmlContent += `<li>${node.innerHTML}</li>`;
+                                break;
                         }
+                    } else if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                        // Handle text nodes that might be direct children of the body
+                        htmlContent += `<p>${node.textContent.trim()}</p>`;
                     }
                 });
             }
@@ -493,20 +517,6 @@
 
         // --- Event Listeners for Download Buttons ---
 
-        // Download HTML
-        downloadHtmlBtn.addEventListener('click', () => {
-            const content = richTextEditor.innerHTML;
-            const blob = new Blob([content], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'document.html';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        });
-
         // Download PDF
         downloadPdfBtn.addEventListener('click', () => {
             const originalContent = richTextEditor.innerHTML;
@@ -515,8 +525,12 @@
             richTextEditor.innerHTML = '<h2>Generating PDF... Please wait.</h2>';
             downloadPdfBtn.disabled = true;
             
-            // Generate a completely new, minimal HTML element for PDF creation
+            // Create a temporary element to hold the content for PDF generation
             const pdfContainer = document.createElement('div');
+            // Apply some basic styles for the PDF
+            pdfContainer.style.fontFamily = 'Inter, sans-serif';
+            pdfContainer.style.fontSize = '12px';
+            pdfContainer.style.color = '#333';
             pdfContainer.innerHTML = originalContent;
 
             // Generate PDF from the self-contained HTML element
@@ -527,9 +541,7 @@
                     filename: 'document.pdf',
                     html2canvas: { 
                         scale: 2, 
-                        logging: true,
-                        // Enable useCORS to handle images properly if they are from different domains
-                        useCORS: true
+                        logging: false
                     },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 })
@@ -545,6 +557,20 @@
                     richTextEditor.innerHTML = originalContent + `<p class="text-red-500 mt-4">Failed to generate PDF. Please try again.</p>`;
                     downloadPdfBtn.disabled = false;
                 });
+        });
+
+        // Download HTML
+        downloadHtmlBtn.addEventListener('click', () => {
+            const content = richTextEditor.innerHTML;
+            const blob = new Blob([content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         });
 
         // Download Markdown
