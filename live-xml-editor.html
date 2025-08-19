@@ -1,140 +1,534 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>DITA Editor with Gemini AI</title>
+  <meta charset="UTF-8" />
+  <title>Live DITA Editor Free + Gemini AI (Strict DITA)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f7f7f7;}
-    h1 { color:#333; }
-    textarea { width:100%; height:200px; margin-top:10px; }
-    #ditaContent { border:1px solid #ccc; min-height:200px; background:#fff; padding:10px; overflow:auto; }
-    .toolbar { display:none; margin:10px 0; gap:5px; }
-    .toolbar button { padding:6px 12px; border:none; background:#333; color:#fff; border-radius:5px; cursor:pointer; }
-    .toolbar button:hover { background:#555; }
-    .edit-mode { border:2px solid #007bff; }
-    #promptBox { width:100%; padding:8px; }
+    :root {
+      --bg: #f7f7f7;
+      --card: #ffffff;
+      --ink: #222;
+      --muted: #555;
+      --brand: #4CAF50;
+      --border: #e5e5e5;
+      --note: #fff8d1;
+      --note-accent: #f4c430;
+      --code-bg: #272822;
+      --code-ink: #f8f8f2;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Times New Roman', serif; margin:0; padding:20px; background:var(--bg); color:var(--ink);}
+    h1,h2,h3,h4,h5 { margin:10px 0; }
+    p { line-height:1.6; margin:6px 0; color:#333; }
+    .note { display:block; background:var(--note); border-left:6px solid var(--note-accent); padding:10px; margin:10px 0; font-style:italic;}
+    .codeblock, pre { display:block; background:var(--code-bg); color:var(--code-ink); padding:10px; overflow-x:auto; border-radius:4px; font-family:monospace; white-space:pre-wrap; margin:10px 0;}
+    table { border-collapse:collapse; margin:15px 0; width:100%; }
+    table, th, td { border:1px solid #888;}
+    th, td { padding:8px 12px; text-align:left; font-size:14px;}
+    img { max-width:100%; margin:10px 0;}
+    button { margin:5px 2px; padding:8px 12px; background:var(--brand); color:#fff; border:none; cursor:pointer; border-radius:6px;}
+    button:hover { opacity:.95;}
+
+    .editor-container { display:flex; gap:20px; margin-top:20px; align-items:stretch;}
+    textarea { width:50%; height:520px; padding:10px; font-family:monospace; resize:vertical; background:var(--card); border:1px solid var(--border); border-radius:6px; }
+
+    .output-container {
+      background:var(--card); padding:0; border-radius:6px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      width:50%; box-sizing:border-box; margin-top:20px;
+      display:flex; flex-direction:column;
+      max-height:520px; overflow:hidden; position:relative;
+      border:1px solid var(--border);
+    }
+    .output-header { padding:12px 16px; border-bottom:1px solid var(--border); font-weight:bold; position:sticky; top:0; background:#fff; z-index:12; }
+
+    .toolbar {
+      display:none;
+      background:#fafafa;
+      border-bottom:1px solid var(--border);
+      padding:6px 10px;
+      position:sticky; top:44px; z-index:11;
+      gap:6px; flex-wrap:wrap;
+    }
+    .toolbar button, .toolbar select, .toolbar input[type=color] {
+      padding:6px 10px; margin:2px; font-size:13px; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; color:#000;
+    }
+    .toolbar button:hover { background:#f0f0f0; }
+    .toolbar-group { display:inline-flex; align-items:center; gap:4px; margin-right:8px; }
+
+    #ditaContent { padding:20px; overflow:auto; flex:1 1 auto; }
+    .edit-mode { outline:2px dashed var(--note-accent); outline-offset:6px; }
+
+    .button-container { position:sticky; bottom:0; z-index:10; background:#fafafa; border-top:1px solid var(--border); padding:10px 16px; display:flex; gap:8px; flex-wrap:wrap; }
+
+    #promptBox { width:60%; padding:8px; margin-top:10px; }
+    .small { color:var(--muted); font-size:12px; }
+    .pill { font-size:11px; padding:3px 8px; background:#eef6ff; border:1px solid #cfe4ff; color:#245; border-radius:999px; margin-left:6px; }
   </style>
 </head>
 <body>
-  <h1>DITA Live Editor + Gemini AI</h1>
+  <h2>Live DITA Editor (with Gemini AI) <span class="pill">Strict DITA Export</span></h2>
+  <div class="small">Everything you type in the rich editor becomes <strong>valid DITA topic</strong> XML compatible with tools like Oxygen XML.</div>
 
-  <label>Enter Prompt for Gemini AI:</label>
-  <textarea id="promptBox" placeholder="Type your prompt here..."></textarea>
-  <button onclick="generateXML()">Generate DITA from AI</button>
-
-  <h3>Generated DITA XML:</h3>
-  <textarea id="ditaTextarea" placeholder="Generated DITA XML will appear here"></textarea>
-
-  <button onclick="toggleEdit()" id="editBtn">Enable Editing</button>
-  <div class="toolbar" id="toolbar">
-    <button onclick="execCmd('bold')">Bold</button>
-    <button onclick="execCmd('italic')">Italic</button>
-    <button onclick="execCmd('underline')">Underline</button>
-    <button onclick="wrapSelection('h1')">H1</button>
-    <button onclick="wrapSelection('h2')">H2</button>
-    <button onclick="insertTable()">Table</button>
-    <button onclick="insertCodeBlock()">Code</button>
-    <button onclick="createLink()">Link</button>
-    <button onclick="insertImage()">Image</button>
+  <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <input type="text" id="promptBox" placeholder="Type a prompt to generate DITA XML..." />
+    <button onclick="generateXML()">Generate XML (Gemini)</button>
+    <span class="small">Tip: Press <kbd>Enter</kbd> in the prompt to run.</span>
   </div>
 
-  <h3>Live DITA Content:</h3>
-  <div id="ditaContent" contenteditable="false"></div>
+  <div class="editor-container">
+    <textarea id="ditaTextarea" placeholder="Type or paste DITA XML here..."></textarea>
 
-  <button onclick="downloadHTML()">Download HTML</button>
-  <button onclick="downloadPDF()">Download PDF</button>
+    <div id="liveOutput" class="output-container">
+      <div class="output-header">Live Output</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+      <div class="toolbar" id="toolbar">
+        <div class="toolbar-group">
+          <button onclick="execCmd('bold')"><b>B</b></button>
+          <button onclick="execCmd('italic')"><i>I</i></button>
+          <button onclick="execCmd('underline')"><u>U</u></button>
+          <button onclick="execCmd('strikeThrough')">S</button>
+        </div>
+        <div class="toolbar-group">
+          <button onclick="execCmd('justifyLeft')">⟸</button>
+          <button onclick="execCmd('justifyCenter')">⇔</button>
+          <button onclick="execCmd('justifyRight')">⟹</button>
+        </div>
+        <div class="toolbar-group">
+          <button onclick="execCmd('insertUnorderedList')">• List</button>
+          <button onclick="execCmd('insertOrderedList')">1. List</button>
+          <button onclick="execCmd('outdent')">Outdent</button>
+          <button onclick="execCmd('indent')">Indent</button>
+        </div>
+        <div class="toolbar-group">
+          <button onclick="wrapSelection('p')">P</button>
+          <button onclick="wrapSelection('h1')">H1</button>
+          <button onclick="wrapSelection('h2')">H2</button>
+          <button onclick="wrapSelection('h3')">H3</button>
+        </div>
+        <div class="toolbar-group">
+          <button onclick="createLink()">🔗 Link</button>
+          <button onclick="execCmd('unlink')">Unlink</button>
+          <button onclick="insertImage()">🖼️ Image</button>
+        </div>
+        <div class="toolbar-group">
+          <label>Font</label>
+          <select onchange="execCmd('fontName', this.value)">
+            <option value="Times New Roman">Times</option>
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+          </select>
+          <label>Size</label>
+          <select onchange="execCmd('fontSize', this.value)">
+            <option value="1">Small</option>
+            <option value="3" selected>Normal</option>
+            <option value="5">Large</option>
+            <option value="7">Huge</option>
+          </select>
+          <label>Color</label>
+          <input type="color" onchange="execCmd('foreColor', this.value)">
+          <button onclick="execCmd('removeFormat')">Clear</button>
+        </div>
+        <div class="toolbar-group">
+          <button onclick="insertTable()">📊 Table</button>
+          <button onclick="insertCodeBlock()">💻 Code Block</button>
+        </div>
+        <div class="toolbar-group">
+          <button onclick="syncNow()">🔁 Sync Now (HTML → DITA)</button>
+        </div>
+      </div>
 
+      <div id="ditaContent"></div>
+
+      <div class="button-container">
+        <button id="editBtn" onclick="toggleEdit()">Enable Editing</button>
+        <button onclick="downloadPDF('ditaContent')">Download Live Output PDF</button>
+        <button onclick="downloadHTML('ditaContent')">Download Live Output HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <script>
-    const apiKey = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg"; // ⚠️ Replace with your Gemini API key
-    const ditaTextarea = document.getElementById("ditaTextarea");
+    // ⚠️ Using a frontend API key is insecure for production. You asked to include it for completeness.
+    const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg"; // Your key from earlier message
+
+    // Ensure Enter creates <p> blocks in the rich editor
+    try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch(e) {}
+
+    function getSafeFilename(prompt, extension){
+      let name = prompt || "live-dita-output";
+      name = name.replace(/[<>:"/\\|?*]+/g, "").trim();
+      if(!name) name = "live-dita-output";
+      return name + extension;
+    }
+
+    // ---------- DITA → HTML (renderer) ----------
+    function transformDITA(xmlDoc){
+      const root = xmlDoc.documentElement; // expect <topic>
+      if(!root || root.tagName !== 'topic') return `<p style="color:red;">Root element must be &lt;topic&gt;.</p>`;
+
+      const titleEl = root.getElementsByTagName('title')[0];
+      let html = '';
+      if(titleEl){ html += `<h1>${escapeHTML(titleEl.textContent)}</h1>`; }
+
+      const bodyEl = root.getElementsByTagName('body')[0] || root; // allow body-less topics
+      html += renderBodyChildren(Array.from(bodyEl.children), 2);
+      return html;
+    }
+
+    function renderBodyChildren(children, headingLevel){
+      let html = '';
+      for(const child of children){
+        const tag = child.tagName;
+        switch(tag){
+          case 'p':
+            html += `<p>${renderInline(child)}</p>`; break;
+          case 'section': {
+            const t = child.getElementsByTagName('title')[0];
+            if(t) html += `<h${Math.min(6, headingLevel)}>${escapeHTML(t.textContent)}</h${Math.min(6, headingLevel)}>`;
+            const inner = Array.from(child.children).filter(n=>n.tagName !== 'title');
+            html += renderBodyChildren(inner, Math.min(6, headingLevel+1));
+            break;
+          }
+          case 'codeblock':
+            html += `<pre class="codeblock">${escapeHTML(child.textContent)}</pre>`; break;
+          case 'ul':
+            html += `<ul>${Array.from(child.children).map(li=>`<li>${renderInline(li)}</li>`).join('')}</ul>`; break;
+          case 'ol':
+            html += `<ol>${Array.from(child.children).map(li=>`<li>${renderInline(li)}</li>`).join('')}</ol>`; break;
+          case 'image': {
+            const href = child.getAttribute('href')||''; html += `<img src="${href}" alt="">`; break;
+          }
+          case 'table': {
+            html += renderTable(child); break;
+          }
+          default:
+            // unknown: render text content as paragraph
+            html += `<p>${escapeHTML(child.textContent)}</p>`;
+        }
+      }
+      return html;
+    }
+
+    function renderTable(tableEl){
+      // Expect <table><tgroup cols="N"><thead?><tbody>...
+      let rows = [];
+      const tgroup = tableEl.getElementsByTagName('tgroup')[0];
+      if(tgroup){
+        const tbody = tgroup.getElementsByTagName('tbody')[0] || tgroup;
+        rows = Array.from(tbody.getElementsByTagName('row'));
+      }
+      const trs = rows.map(row=>{
+        const tds = Array.from(row.children).filter(c=>c.tagName==='entry').map(c=>`<td>${escapeHTML(c.textContent)}</td>`).join('');
+        return `<tr>${tds}</tr>`;
+      }).join('');
+      return `<table><tbody>${trs}</tbody></table>`;
+    }
+
+    function renderInline(el){
+      // Allow simple inline DITA <b><i><u><xref href>text</xref>
+      let out = '';
+      for(const node of el.childNodes){
+        if(node.nodeType===3){ out += escapeHTML(node.textContent); continue; }
+        if(node.nodeType!==1) continue;
+        switch(node.tagName){
+          case 'b': out += `<b>${renderInline(node)}</b>`; break;
+          case 'i': out += `<i>${renderInline(node)}</i>`; break;
+          case 'u': out += `<u>${renderInline(node)}</u>`; break;
+          case 'xref': {
+            const href = node.getAttribute('href')||''; out += `<a href="${href}">${escapeHTML(node.textContent)}</a>`; break;
+          }
+          default: out += escapeHTML(node.textContent);
+        }
+      }
+      return out;
+    }
+
+    // ---------- HTML → DITA (exporter) ----------
+    function htmlToDITA(rootEl){
+      const titleText = (rootEl.querySelector('h1')?.textContent || document.getElementById('promptBox').value.trim() || 'Untitled').trim();
+      let dita = [];
+      dita.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+      dita.push(`<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">`);
+      dita.push(`<topic id="topic_${Date.now()}">`);
+      dita.push(`<title>${xmlEscape(titleText)}</title>`);
+      dita.push(`<body>`);
+
+      // Iterate top-level nodes AFTER first h1
+      const nodes = Array.from(rootEl.childNodes);
+      let i = 0;
+      // skip everything until after first h1 (we already captured it as <title>)
+      while(i < nodes.length && !(nodes[i].nodeType===1 && nodes[i].tagName.toLowerCase()==='h1')) i++;
+      if(i < nodes.length && nodes[i].tagName && nodes[i].tagName.toLowerCase()==='h1') i++;
+
+      while(i < nodes.length){
+        const node = nodes[i];
+        if(node.nodeType===3){ // stray text → paragraph
+          const txt = node.textContent.trim();
+          if(txt) dita.push(`<p>${xmlEscape(txt)}</p>`);
+          i++; continue;
+        }
+        if(node.nodeType!==1){ i++; continue; }
+        const tag = node.tagName.toLowerCase();
+
+        if(tag==='h2' || tag==='h3'){
+          // Start a section and collect until next heading h1/h2/h3
+          const level = tag==='h2' ? 2 : 3;
+          const { sectionXML, nextIndex } = collectSection(nodes, i, level);
+          dita.push(sectionXML);
+          i = nextIndex; continue;
+        }
+
+        dita.push(convertBlock(node));
+        i++;
+      }
+
+      dita.push(`</body>`);
+      dita.push(`</topic>`);
+      return dita.join('\n');
+    }
+
+    function collectSection(nodes, startIndex, level){
+      const titleNode = nodes[startIndex];
+      const title = titleNode.textContent.trim();
+      let bodyXML = '';
+      let i = startIndex + 1;
+      for(; i < nodes.length; i++){
+        const n = nodes[i];
+        if(n.nodeType===1){
+          const t = n.tagName.toLowerCase();
+          if(t==='h1' || t==='h2' || t==='h3') break; // stop at next section/heading
+        }
+        bodyXML += convertNode(n);
+      }
+      const sectionXML = `<section>\n<title>${xmlEscape(title)}</title>\n${bodyXML}</section>`;
+      return { sectionXML, nextIndex: i };
+    }
+
+    function convertNode(node){
+      if(node.nodeType===3){ // text node
+        const txt = node.textContent.trim();
+        return txt ? `<p>${xmlEscape(txt)}</p>` : '';
+      }
+      if(node.nodeType!==1) return '';
+      return convertBlock(node);
+    }
+
+    function convertBlock(el){
+      const tag = el.tagName.toLowerCase();
+      switch(tag){
+        case 'p':
+          return `<p>${inlineToDITA(el)}</p>`;
+        case 'pre':
+          return `<codeblock>${xmlEscape(el.textContent)}</codeblock>`;
+        case 'ul': {
+          const items = Array.from(el.querySelectorAll(':scope > li')).map(li=>`<li>${inlineToDITA(li)}</li>`).join('');
+          return `<ul>${items}</ul>`;
+        }
+        case 'ol': {
+          const items = Array.from(el.querySelectorAll(':scope > li')).map(li=>`<li>${inlineToDITA(li)}</li>`).join('');
+          return `<ol>${items}</ol>`;
+        }
+        case 'img': {
+          const src = el.getAttribute('src')||''; return `<image href="${xmlAttr(src)}"/>`;
+        }
+        case 'table': {
+          const rows = Array.from(el.querySelectorAll(':scope > tbody > tr, :scope > tr'));
+          const colCount = Math.max(1, ...rows.map(r=>r.querySelectorAll('td,th').length));
+          let xml = `<table><tgroup cols="${colCount}">`;
+          xml += `<tbody>`;
+          rows.forEach(r=>{
+            xml += `<row>`;
+            Array.from(r.querySelectorAll('td,th')).forEach(cell=>{
+              xml += `<entry>${inlineToDITA(cell)}</entry>`;
+            });
+            xml += `</row>`;
+          });
+          xml += `</tbody>`;
+          xml += `</tgroup></table>`;
+          return xml;
+        }
+        case 'div': {
+          // treat block div as paragraph-ish if it contains text only
+          if(el.textContent.trim() && !el.children.length){
+            return `<p>${xmlEscape(el.textContent.trim())}</p>`;
+          }
+          // otherwise convert its children
+          return Array.from(el.childNodes).map(convertNode).join('');
+        }
+        default:
+          // For headings h2/h3 etc are handled elsewhere; unknown blocks → paragraph text
+          if(/^h[1-6]$/.test(tag)) return '';
+          return el.textContent.trim() ? `<p>${xmlEscape(el.textContent.trim())}</p>` : '';
+      }
+    }
+
+    function inlineToDITA(el){
+      let out = '';
+      for(const node of el.childNodes){
+        if(node.nodeType===3){ out += xmlEscape(node.textContent); continue; }
+        if(node.nodeType!==1) continue;
+        const tag = node.tagName.toLowerCase();
+        switch(tag){
+          case 'b':
+          case 'strong':
+            out += `<b>${inlineToDITA(node)}</b>`; break;
+          case 'i':
+          case 'em':
+            out += `<i>${inlineToDITA(node)}</i>`; break;
+          case 'u':
+            out += `<u>${inlineToDITA(node)}</u>`; break;
+          case 'code':
+            out += `<codeph>${xmlEscape(node.textContent)}</codeph>`; break;
+          case 'a': {
+            const href = node.getAttribute('href')||'';
+            const text = node.textContent || href;
+            out += `<xref href="${xmlAttr(href)}">${xmlEscape(text)}</xref>`; break;
+          }
+          case 'img': {
+            const src = node.getAttribute('src')||''; out += `<image href="${xmlAttr(src)}"/>`; break;
+          }
+          default:
+            // flatten other inline tags
+            out += inlineToDITA(node);
+        }
+      }
+      return out;
+    }
+
+    function escapeHTML(s){ return (s||'').replace(/[&<>]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
+    function xmlEscape(s){ return (s||'').replace(/[&<>]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
+    function xmlAttr(s){ return xmlEscape(String(s).replace(/"/g,'&quot;')); }
+
+    function downloadPDF(elementId){
+      const element=document.getElementById(elementId);
+      if(!element.innerHTML.trim()){ alert("No content to download."); return; }
+      const prompt = document.getElementById("promptBox").value.trim();
+      const filename = getSafeFilename(prompt, ".pdf");
+      const origWidth = element.style.width;
+      element.style.width="100%";
+      html2pdf().set({
+        margin:[15,15,15,15],
+        filename:filename,
+        image:{type:'jpeg',quality:0.98},
+        html2canvas:{scale:2,useCORS:true},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      }).from(element).save().then(()=>{ element.style.width = origWidth || ""; });
+    }
+
+    function downloadHTML(elementId){
+      const element=document.getElementById(elementId);
+      if(!element.innerHTML.trim()){ alert("No content to download."); return; }
+      const prompt = document.getElementById("promptBox").value.trim();
+      const filename = getSafeFilename(prompt, ".html");
+      const blob=new Blob([element.innerHTML],{type:"text/html"});
+      const link=document.createElement("a");
+      link.href=URL.createObjectURL(blob);
+      link.download=filename;
+      link.click();
+    }
+
+    const textarea = document.getElementById("ditaTextarea");
     const ditaContent = document.getElementById("ditaContent");
 
+    // XML → Live output
+    textarea.addEventListener("input",()=>{
+      const xmlText = textarea.value.trim();
+      if(!xmlText){ ditaContent.innerHTML=""; return; }
+      try{
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText,"application/xml");
+        if(xmlDoc.getElementsByTagName("parsererror").length){
+          ditaContent.innerHTML="<p style='color:red;'>Invalid XML</p>";
+          return;
+        }
+        ditaContent.innerHTML = transformDITA(xmlDoc);
+      } catch{
+        ditaContent.innerHTML="<p style='color:red;'>Error parsing XML</p>";
+      }
+    });
+
+    // Rich editor → XML (strict DITA) on each input while editing
+    let isEditable = false;
+    ditaContent.addEventListener("input", ()=>{ if(isEditable){ textarea.value = htmlToDITA(ditaContent); } });
+
+    function syncNow(){ textarea.value = htmlToDITA(ditaContent); }
+
+    // Editing controls
+    function toggleEdit(){
+      isEditable = !isEditable;
+      const editBtn = document.getElementById("editBtn");
+      const toolbar = document.getElementById("toolbar");
+      ditaContent.contentEditable = isEditable;
+      if(isEditable){
+        ditaContent.classList.add("edit-mode");
+        editBtn.textContent = "Disable Editing";
+        toolbar.style.display = "flex";
+        focusEnd(ditaContent);
+      } else {
+        ditaContent.classList.remove("edit-mode");
+        editBtn.textContent = "Enable Editing";
+        toolbar.style.display = "none";
+      }
+    }
+
+    function execCmd(command, value=null){ document.execCommand(command, false, value); ditaContent.focus(); }
+    function createLink(){ const url = prompt("Enter the URL (include https://):"); if(url) execCmd("createLink", url); }
+    function insertImage(){ const url = prompt("Enter image URL:"); if(url) execCmd("insertImage", url); }
+    function wrapSelection(tag){ document.execCommand('formatBlock', false, tag.toUpperCase()); ditaContent.focus(); }
+    function focusEnd(el){ el.focus(); const range = document.createRange(); range.selectNodeContents(el); range.collapse(false); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+
+    // Insert helpers
+    function insertTable(){
+      const rows = parseInt(prompt("Number of rows:", "2"));
+      const cols = parseInt(prompt("Number of columns:", "2"));
+      if(rows > 0 && cols > 0){
+        let table = "<table><tbody>";
+        for(let r=0;r<rows;r++){
+          table += "<tr>";
+          for(let c=0;c<cols;c++) table += "<td>Cell</td>";
+          table += "</tr>";
+        }
+        table += "</tbody></table>";
+        document.execCommand("insertHTML", false, table);
+      }
+    }
+    function insertCodeBlock(){
+      const code = prompt("Enter code:");
+      if(code!==null){ const block = `<pre class="codeblock">${escapeHTML(code)}</pre>`; document.execCommand("insertHTML", false, block); }
+    }
+
+    // Gemini integration (generate valid DITA topic)
     async function generateXML(){
-      const prompt = document.getElementById("promptBox").value;
-      if(!prompt.trim()) return alert("Enter a prompt first!");
-      
+      const prompt=document.getElementById("promptBox").value.trim();
+      if(!prompt){ alert("Please enter a prompt."); return; }
       try {
-        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key="+apiKey, {
+        const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+GEMINI_API_KEY, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Write valid DITA XML for: ${prompt}` }]}]
+            contents: [{ role: "user", parts: [{ text: `Generate a valid DITA XML topic with <!DOCTYPE topic ...>. Include <topic><title><body> with <p>, lists, codeblock, and table examples. Prompt: ${prompt}` }] }]
           })
         });
         const data = await response.json();
-        const xml = data.candidates[0].content.parts[0].text;
-        ditaTextarea.value = xml;
-        ditaContent.innerHTML = xml;
-      } catch(e){
-        alert("Error generating XML: " + e);
+        const generated = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if(!generated){ alert("No output from Gemini."); return; }
+        // Place as-is in textarea, and render
+        textarea.value = generated.trim();
+        textarea.dispatchEvent(new Event("input"));
+      } catch (err) {
+        console.error(err);
+        alert("Error generating XML from Gemini API.");
       }
     }
 
-    // Two-way binding: textarea → editor
-    ditaTextarea.addEventListener("input", () => {
-      ditaContent.innerHTML = ditaTextarea.value;
+    document.getElementById("promptBox").addEventListener("keydown", function(event) {
+      if(event.key === "Enter"){ event.preventDefault(); generateXML(); }
     });
-
-    // Two-way binding: editor → textarea
-    ditaContent.addEventListener("input", () => {
-      ditaTextarea.value = ditaContent.innerHTML;
-    });
-
-    function toggleEdit(){
-      const toolbar = document.getElementById("toolbar");
-      const editBtn = document.getElementById("editBtn");
-      if(ditaContent.isContentEditable){
-        ditaContent.contentEditable = false;
-        ditaContent.classList.remove("edit-mode");
-        toolbar.style.display = "none";
-        editBtn.textContent = "Enable Editing";
-      } else {
-        ditaContent.contentEditable = true;
-        ditaContent.classList.add("edit-mode");
-        toolbar.style.display = "flex";
-        editBtn.textContent = "Disable Editing";
-      }
-    }
-
-    function execCmd(command, value=null){
-      document.execCommand(command, false, value);
-      ditaContent.focus();
-    }
-    function createLink(){ const url = prompt("Enter URL:"); if(url) execCmd("createLink", url); }
-    function insertImage(){ const url = prompt("Image URL:"); if(url) execCmd("insertImage", url); }
-    function wrapSelection(tag){ document.execCommand('formatBlock', false, tag.toUpperCase()); }
-    function insertTable(){
-      const rows = prompt("Rows?",2); const cols = prompt("Cols?",2);
-      let table = "<table border='1'>";
-      for(let r=0;r<rows;r++){ table += "<tr>"; for(let c=0;c<cols;c++){ table += "<td>Cell</td>"; } table += "</tr>"; }
-      table += "</table>";
-      document.execCommand("insertHTML", false, table);
-    }
-    function insertCodeBlock(){ const code = prompt("Enter code:"); if(code) document.execCommand("insertHTML", false, `<pre>${code}</pre>`); }
-
-    async function downloadPDF(){
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      const content = ditaContent;
-      const canvas = await html2canvas(content);
-      const imgData = canvas.toDataURL("image/png");
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save("dita-output.pdf");
-    }
-
-    function downloadHTML(){
-      const blob = new Blob([ditaContent.innerHTML], {type: "text/html"});
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "dita-output.html";
-      link.click();
-    }
   </script>
 </body>
 </html>
