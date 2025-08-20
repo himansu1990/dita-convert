@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Live DITA Editor — Full</title>
+  <title>Live DITA Editor — Complete</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <style>
     :root{
@@ -57,13 +57,20 @@
       .layout{flex-direction:column;padding:0 12px 18px}
       .pane, .panel{width:100%}
     }
+    input[type=text]{padding:8px;border:1px solid var(--border);border-radius:6px}
   </style>
 </head>
 <body>
   <header>
     <h1>Live DITA Editor (Strict Lists + Gemini)</h1>
-    <div class="muted">Two-way sync: Rich text ⇆ DITA topic XML. Use Full Screen for focused writing. Loading indicator shows during Gemini requests.</div>
+    <div class="muted">Two-way sync: Rich text ⇆ DITA topic XML. Full-screen for focused writing. Loading indicator appears during AI requests.</div>
   </header>
+
+  <div style="padding:12px 18px; display:flex; gap:8px; align-items:center;">
+    <input id="prompt" type="text" placeholder="Prompt for Gemini to generate DITA topic…" style="flex:1; padding:8px; border-radius:6px; border:1px solid var(--border)"/>
+    <button id="genBtn" class="btn secondary">Generate XML (Gemini)</button>
+    <input id="filenameInput" type="text" placeholder="Optional filename (without extension)" style="width:300px; padding:8px; border-radius:6px; border:1px solid var(--border)"/>
+  </div>
 
   <div class="layout">
     <!-- XML pane -->
@@ -77,7 +84,6 @@
         <div id="xmlLoading" class="loading-overlay hidden"><div class="spinner"></div><div>Generating…</div></div>
         <textarea id="xmlBox" class="xml" placeholder="Paste or edit a DITA topic here…&#10;It will render on the right."></textarea>
         <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-          <input id="filenameInput" type="text" placeholder="Optional filename (without extension)" style="padding:8px;border:1px solid var(--border);border-radius:6px;flex:1"/>
           <button class="btn gray" onclick="downloadXml()">Download DITA XML</button>
         </div>
       </div>
@@ -87,8 +93,6 @@
     <div class="panel" id="rtePane">
       <div class="header">
         <strong>Rich Editor</strong>
-        <input id="prompt" type="text" placeholder="Prompt for Gemini to generate DITA topic…" style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-left:6px;flex:1"/>
-        <button id="genBtn" class="btn secondary">Generate XML (Gemini)</button>
         <div class="fs-spacer"></div>
         <button id="rteFsBtn" class="btn gray" title="Toggle full screen">⛶ Full Screen</button>
       </div>
@@ -113,7 +117,7 @@
 
       <div style="position:relative;flex:1;display:flex;flex-direction:column">
         <div id="rteLoading" class="loading-overlay hidden"><div class="spinner"></div><div>Generating…</div></div>
-        <div id="rte" contenteditable="true">
+        <div id="rte" contenteditable="true" style="padding:14px;min-height:320px;outline:none">
           <h1>Getting Started</h1>
           <p>Type here. Press Enter to create proper &lt;p&gt; blocks.</p>
           <ul><li>Example bullet</li></ul>
@@ -122,9 +126,9 @@
 
       <div class="controls">
         <button id="toggleBtn" class="btn">Disable Editing</button>
-        <button class="btn gray" onclick="downloadHTML()">Download Rich HTML</button>
-        <button class="btn gray" onclick="downloadPDF()">Download Rich PDF</button>
-        <button class="btn gray" onclick="downloadEditableHTML()">Download Editable HTML</button>
+        <button class="btn gray" onclick="downloadHTML()">Download as HTML</button>
+        <button class="btn gray" onclick="downloadPDF()">Download as PDF</button>
+        <!-- <button class="btn gray" onclick="downloadEditableHTML()">Download Editable HTML</button> -->
       </div>
     </div>
   </div>
@@ -133,10 +137,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 
   <script>
-    // === YOUR API KEY (as provided earlier) ===
+    /***** Your API key (embedded as you requested) *****/
     const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg";
 
-    // Elements
+    // DOM references
     const xmlBox = document.getElementById('xmlBox');
     const rte = document.getElementById('rte');
     const promptInput = document.getElementById('prompt');
@@ -150,15 +154,14 @@
     const filenameInput = document.getElementById('filenameInput');
     const toggleBtn = document.getElementById('toggleBtn');
 
-    // Use paragraph separators
+    // Ensure Enter creates <p>
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch(e){}
 
-    // ---- Fullscreen toggles ----
+    // Fullscreen toggles
     function toggleFullscreen(container, btn){
       container.classList.toggle('fullscreen');
       const isFs = container.classList.contains('fullscreen');
       if(btn) btn.textContent = isFs ? '🡼 Exit Full Screen' : '⛶ Full Screen';
-      // focus inside
       if(container===xmlPane) xmlBox.focus(); else rte.focus();
     }
     xmlFsBtn.addEventListener('click', ()=>toggleFullscreen(xmlPane, xmlFsBtn));
@@ -170,7 +173,7 @@
       }
     });
 
-    // ---- Editor toolbar helpers ----
+    // Toolbar helpers
     function cmd(name, value=null){ document.execCommand(name, false, value); rte.focus(); onRteInput(); }
     function formatBlock(tag){ document.execCommand('formatBlock', false, tag.toUpperCase()); rte.focus(); onRteInput(); }
     function createLink(){ const u = prompt('Enter URL (https://...)'); if(u) cmd('createLink', u); }
@@ -212,12 +215,12 @@
       sel.addRange(range);
     }
 
-    // ---- Escape helpers ----
+    // Escape helpers
     function escapeHTML(s){ return (s||'').replace(/[&<>]/g, m=> ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
     function xmlEscape(s){ return (s||'').replace(/[&<>]/g, m=> ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
     function xmlAttr(s){ return xmlEscape(String(s).replace(/"/g,'&quot;')); }
 
-    // ---- HTML -> DITA conversion (strict lists: <li><p>..</p></li>) ----
+    // HTML -> DITA conversion (strict li-> <li><p>..</p></li>)
     function htmlToDITA(rootEl){
       const titleText = (rootEl.querySelector('h1')?.textContent || 'Untitled').trim();
       const lines = [];
@@ -309,7 +312,7 @@
       return xml;
     }
 
-    // ---- DITA -> HTML (back-conversion) ----
+    // DITA -> HTML
     function ditaToHTML(xmlText){
       try{
         const doc = new DOMParser().parseFromString(xmlText,'application/xml');
@@ -381,7 +384,7 @@
       return out;
     }
 
-    // ---- Sync wiring ----
+    // Sync wiring
     function onXmlInput(){ const xml = xmlBox.value.trim(); if(!xml){ rte.innerHTML = '<h1>Untitled</h1>'; return;} rte.innerHTML = ditaToHTML(xml); }
     function onRteInput(){ xmlBox.value = htmlToDITA(rte); }
     function syncNow(){ onRteInput(); }
@@ -389,16 +392,19 @@
     xmlBox.addEventListener('input', onXmlInput);
     rte.addEventListener('input', onRteInput);
 
-    // ---- Enable/Disable editing ----
+    // Enable/disable editing
     let editable = true;
     toggleBtn.addEventListener('click', ()=>{
       editable = !editable; rte.contentEditable = String(editable); rte.classList.toggle('edit', editable);
       toggleBtn.textContent = editable ? 'Disable Editing' : 'Enable Editing';
     });
 
-    // ---- Filename helpers (use DITA title first, else RTE heading) ----
+    // Filename helpers (filename input -> DITA title -> RTE heading -> fallback)
     function getDocTitle(){
-      // Try DITA title from xmlBox
+      // 1) filename input
+      const inputName = filenameInput && filenameInput.value.trim();
+      if(inputName) return inputName;
+      // 2) DITA title from xml
       try{
         const xml = xmlBox.value.trim();
         if(xml){
@@ -409,19 +415,19 @@
           }
         }
       }catch(e){}
-      // else RTE
+      // 3) RTE heading
       const h = rte.querySelector('h1,h2,h3');
       if(h && h.textContent.trim()) return h.textContent.trim();
-      // else filename input
-      if(filenameInput && filenameInput.value.trim()) return filenameInput.value.trim();
+      // fallback
       return 'output';
     }
     function fileSafe(name){ return name.replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'output'; }
 
-    // ---- Downloads ----
+    // Downloads
     function downloadHTML(){
       const name = fileSafe(getDocTitle()) + '.html';
-      const blob = new Blob([rte.innerHTML], { type:'text/html' });
+      const htmlDoc = `<!doctype html><meta charset="utf-8"><title>${escapeHTML(getDocTitle())}</title><body>${rte.innerHTML}</body>`;
+      const blob = new Blob([htmlDoc], { type:'text/html' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     }
     function downloadPDF(){
@@ -437,7 +443,7 @@
     }
     function downloadEditableHTML(){
       const name = fileSafe(getDocTitle()) + '-editable.html';
-      const html = `<!doctype html><meta charset="utf-8"><body contenteditable="true">${rte.innerHTML}</body>`;
+      const html = `<!doctype html><meta charset="utf-8"><title>${escapeHTML(getDocTitle())}</title><body contenteditable="true">${rte.innerHTML}</body>`;
       const blob = new Blob([html], { type:'text/html' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     }
@@ -449,17 +455,17 @@
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     }
 
-    // ---- Gemini generator with loading indicators ----
+    // Gemini generator with loading overlays
     async function generateWithGemini(){
       const prompt = promptInput.value.trim();
       if(!prompt){ alert('Enter a prompt'); return; }
 
-      // Show loading overlays
+      // show loaders
       xmlLoading.classList.remove('hidden');
       rteLoading.classList.remove('hidden');
 
       try{
-        // POST to Gemini generative language endpoint with provided API key
+        // Use the Gemini generateContent endpoint (key embedded)
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY, {
           method:'POST',
           headers:{ 'Content-Type':'application/json' },
@@ -476,7 +482,6 @@
         if(!xml){
           alert('No output from Gemini');
         } else {
-          // Put generated XML into XML editor and render to RTE
           xmlBox.value = xml.trim();
           onXmlInput();
         }
@@ -484,15 +489,15 @@
         console.error(e);
         alert('Gemini error: ' + (e.message || e));
       }finally{
-        // Hide loading overlays
         xmlLoading.classList.add('hidden');
         rteLoading.classList.add('hidden');
       }
     }
+
     genBtn.addEventListener('click', generateWithGemini);
     promptInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); generateWithGemini(); }});
 
-    // ---- Init: populate xmlBox from initial rte ----
+    // Initialize RTE -> XML at load
     window.addEventListener('load', ()=>{ rte.classList.add('edit'); onRteInput(); });
   </script>
 </body>
