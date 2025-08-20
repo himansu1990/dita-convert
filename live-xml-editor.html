@@ -1,99 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Live DITA Editor (Strict Lists + Gemini)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <title>Live DITA Editor — Full</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <style>
-    :root {
+    :root{
       --bg:#f7f7f7; --card:#fff; --ink:#222; --muted:#666;
-      --brand:#4CAF50; --border:#e5e5e5; --code:#272822; --code-ink:#f8f8f2;
+      --brand:#4CAF50; --accent:#2d7ef7; --border:#e5e5e5;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
-    header{padding:16px 20px}
-    h1,h2,h3{margin:.5rem 0}
-    .row{display:flex;gap:18px;align-items:stretch;padding:0 20px 20px}
-
-    /* Shared controls */
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Arial,Helvetica,sans-serif}
+    header{padding:18px}
+    h1,h2{margin:.2rem 0}
+    .layout{display:flex;gap:18px;padding:0 18px 24px}
+    /* Left XML pane */
+    .pane{width:48%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;background:var(--card);overflow:hidden}
+    .pane .header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+    .pane .body{padding:12px;flex:1;display:flex;flex-direction:column;min-height:360px}
+    textarea.xml{flex:1;width:100%;resize:none;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:ui-monospace,Menlo,monospace;min-height:320px}
+    /* Right rich editor */
+    .panel{width:52%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;background:var(--card);overflow:hidden}
+    .panel .header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+    .toolbar{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;background:#fafafa}
+    .toolbar button{padding:6px 10px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    #rte{padding:14px;flex:1;overflow:auto;min-height:320px;outline:none}
+    .controls{padding:10px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;background:#fafafa}
     .btn{background:var(--brand);color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer}
-    .btn.secondary{background:#2d7ef7}
     .btn.gray{background:#888}
-    .btn:hover{opacity:.95}
-    .muted{color:var(--muted);font-size:12px}
-    input[type=text]{padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:280px}
-
-    /* Left: XML pane */
-    .pane{width:48%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
-    .pane-header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .pane-body{display:flex;flex:1 1 auto;min-height:0}
-    .pane-body textarea{
-      width:100%; padding:12px; border:0; outline:none; resize:none;
-      font-family:ui-monospace,SFMono-Regular,Menlo,monospace; line-height:1.45;
-      height:600px;
-    }
-
-    /* Right: Rich editor */
-    .panel{width:52%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
-    .panel-header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .toolbar{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:#fafafa}
-    .toolbar button,.toolbar select,.toolbar input[type=color]{
-      border:1px solid #ddd;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px
-    }
-    .toolbar button:hover{background:#f1f1f1}
-    #rte{padding:16px;flex:1 1 auto;overflow:auto;outline:none;min-height:320px}
-    #rte.edit{outline:2px dashed #f4c430;outline-offset:6px}
-    .controls{padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#fafafa}
-
-    /* Content styles */
-    pre.codeblock{background:var(--code);color:var(--code-ink);padding:10px;border-radius:6px;white-space:pre-wrap}
-    table{border-collapse:collapse;width:100%;margin:10px 0}
+    .btn.secondary{background:var(--accent)}
+    .muted{color:var(--muted);font-size:13px}
+    pre.codeblock{background:#272822;color:#f8f8f2;padding:10px;border-radius:6px;white-space:pre-wrap}
+    table{border-collapse:collapse;width:100%}
     th,td{border:1px solid #888;padding:8px 10px;text-align:left}
 
-    /* Fullscreen */
+    /* Fullscreen class */
     .fullscreen{
-      position:fixed !important;
-      inset:0 !important;
-      z-index:9999 !important;
-      width:100% !important;
-      height:100% !important;
-      margin:0 !important;
-      border-radius:0 !important;
-      background:var(--card);
+      position:fixed !important; inset:0 !important; z-index:9999 !important;
+      width:100% !important; height:100% !important; margin:0 !important; border-radius:0 !important;
+      display:flex; flex-direction:column;
     }
-    .fullscreen .pane-body textarea{height:auto !important; flex:1 1 auto}
-    .fullscreen #rte{min-height:0}
-    .fullscreen .controls{position:sticky; bottom:0}
-    .fs-spacer{flex:1 1 auto}
+    .fullscreen #rte{min-height:calc(100vh - 150px)}
+    .fullscreen textarea.xml{min-height:calc(100vh - 150px)}
+    .fs-spacer{flex:1}
+    /* Loading overlay */
+    .loading-overlay{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,0.85); gap:12px; font-weight:600; color:var(--accent); border-radius:8px; z-index:20;
+    }
+    .loading-overlay.hidden{display:none}
+    .spinner{width:28px;height:28px;border-radius:50%;border:4px solid #eee;border-top-color:var(--accent);animation:spin 1s linear infinite}
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+    /* small responsive */
+    @media (max-width:980px){
+      .layout{flex-direction:column;padding:0 12px 18px}
+      .pane, .panel{width:100%}
+    }
   </style>
 </head>
 <body>
   <header>
-    <h2>Live DITA Editor (Strict Lists + Gemini)</h2>
-    <div class="muted">Two-way sync: Rich text ⇆ DITA topic XML (Oxygen-compatible). Lists round-trip with <code>&lt;li&gt;&lt;p&gt;…&lt;/p&gt;&lt;/li&gt;</code>.</div>
+    <h1>Live DITA Editor (Strict Lists + Gemini)</h1>
+    <div class="muted">Two-way sync: Rich text ⇆ DITA topic XML. Use Full Screen for focused writing. Loading indicator shows during Gemini requests.</div>
   </header>
 
-  <div class="row">
-    <!-- Left: XML editor -->
+  <div class="layout">
+    <!-- XML pane -->
     <div class="pane" id="xmlPane">
-      <div class="pane-header">
-        <span>XML Editor</span>
+      <div class="header">
+        <strong>XML Editor</strong>
         <div class="fs-spacer"></div>
-        <button class="btn gray" id="xmlFsBtn" title="Toggle Full Screen">⛶ Full Screen</button>
+        <button id="xmlFsBtn" class="btn gray" title="Toggle full screen">⛶ Full Screen</button>
       </div>
-      <div class="pane-body">
-        <textarea id="xmlBox" placeholder="Paste or edit a DITA topic here…&#10;It will render on the right."></textarea>
+      <div class="body" style="position:relative">
+        <div id="xmlLoading" class="loading-overlay hidden"><div class="spinner"></div><div>Generating…</div></div>
+        <textarea id="xmlBox" class="xml" placeholder="Paste or edit a DITA topic here…&#10;It will render on the right."></textarea>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <input id="filenameInput" type="text" placeholder="Optional filename (without extension)" style="padding:8px;border:1px solid var(--border);border-radius:6px;flex:1"/>
+          <button class="btn gray" onclick="downloadXml()">Download DITA XML</button>
+        </div>
       </div>
     </div>
 
-    <!-- Right: Rich editor -->
+    <!-- Rich editor -->
     <div class="panel" id="rtePane">
-      <div class="panel-header">
-        <span>Rich Editor</span>
-        <input id="prompt" type="text" placeholder="Prompt for Gemini to generate DITA topic…" />
-        <button class="btn secondary" id="genBtn">Generate XML (Gemini)</button>
+      <div class="header">
+        <strong>Rich Editor</strong>
+        <input id="prompt" type="text" placeholder="Prompt for Gemini to generate DITA topic…" style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-left:6px;flex:1"/>
+        <button id="genBtn" class="btn secondary">Generate XML (Gemini)</button>
         <div class="fs-spacer"></div>
-        <button class="btn gray" id="rteFsBtn" title="Toggle Full Screen">⛶ Full Screen</button>
+        <button id="rteFsBtn" class="btn gray" title="Toggle full screen">⛶ Full Screen</button>
       </div>
 
       <div class="toolbar" id="toolbar">
@@ -114,73 +111,75 @@
         <button onclick="syncNow()">🔁 Sync Now (HTML → DITA)</button>
       </div>
 
-      <div id="rte" contenteditable="true">
-        <h1>Getting Started</h1>
-        <p>Type here. Press Enter to create proper &lt;p&gt; blocks.</p>
-        <ul>
-          <li>Example bullet</li>
-        </ul>
+      <div style="position:relative;flex:1;display:flex;flex-direction:column">
+        <div id="rteLoading" class="loading-overlay hidden"><div class="spinner"></div><div>Generating…</div></div>
+        <div id="rte" contenteditable="true">
+          <h1>Getting Started</h1>
+          <p>Type here. Press Enter to create proper &lt;p&gt; blocks.</p>
+          <ul><li>Example bullet</li></ul>
+        </div>
       </div>
 
       <div class="controls">
         <button id="toggleBtn" class="btn">Disable Editing</button>
         <button class="btn gray" onclick="downloadHTML()">Download Rich HTML</button>
         <button class="btn gray" onclick="downloadPDF()">Download Rich PDF</button>
-        <button class="btn gray" onclick="downloadDITA()">Download DITA XML</button>
+        <button class="btn gray" onclick="downloadEditableHTML()">Download Editable HTML</button>
       </div>
     </div>
   </div>
 
-  <!-- libs -->
+  <!-- html2pdf lib -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 
   <script>
-    /* You provided this key; keeping it as-is per your request. */
+    // === YOUR API KEY (as provided earlier) ===
     const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg";
 
+    // Elements
     const xmlBox = document.getElementById('xmlBox');
     const rte = document.getElementById('rte');
-    const toggleBtn = document.getElementById('toggleBtn');
-    const genBtn = document.getElementById('genBtn');
     const promptInput = document.getElementById('prompt');
-
+    const genBtn = document.getElementById('genBtn');
+    const xmlLoading = document.getElementById('xmlLoading');
+    const rteLoading = document.getElementById('rteLoading');
     const xmlPane = document.getElementById('xmlPane');
     const rtePane = document.getElementById('rtePane');
     const xmlFsBtn = document.getElementById('xmlFsBtn');
     const rteFsBtn = document.getElementById('rteFsBtn');
+    const filenameInput = document.getElementById('filenameInput');
+    const toggleBtn = document.getElementById('toggleBtn');
 
-    // Ensure Enter inserts <p>
+    // Use paragraph separators
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch(e){}
 
-    // ---------- Full Screen ----------
+    // ---- Fullscreen toggles ----
     function toggleFullscreen(container, btn){
       container.classList.toggle('fullscreen');
       const isFs = container.classList.contains('fullscreen');
-      if(btn){
-        btn.textContent = isFs ? '🡼 Exit Full Screen' : '⛶ Full Screen';
-        btn.title = isFs ? 'Exit Full Screen' : 'Toggle Full Screen';
-      }
-      if(container === xmlPane) xmlBox.focus(); else rte.focus();
+      if(btn) btn.textContent = isFs ? '🡼 Exit Full Screen' : '⛶ Full Screen';
+      // focus inside
+      if(container===xmlPane) xmlBox.focus(); else rte.focus();
     }
     xmlFsBtn.addEventListener('click', ()=>toggleFullscreen(xmlPane, xmlFsBtn));
     rteFsBtn.addEventListener('click', ()=>toggleFullscreen(rtePane, rteFsBtn));
     window.addEventListener('keydown', (e)=>{
-      if(e.key === 'Escape'){
+      if(e.key==='Escape'){
         if(xmlPane.classList.contains('fullscreen')) toggleFullscreen(xmlPane, xmlFsBtn);
         if(rtePane.classList.contains('fullscreen')) toggleFullscreen(rtePane, rteFsBtn);
       }
     });
 
-    // ---------- Toolbar helpers ----------
+    // ---- Editor toolbar helpers ----
     function cmd(name, value=null){ document.execCommand(name, false, value); rte.focus(); onRteInput(); }
     function formatBlock(tag){ document.execCommand('formatBlock', false, tag.toUpperCase()); rte.focus(); onRteInput(); }
-    function createLink(){ const url = prompt('Enter URL (https://…)'); if(url) cmd('createLink', url); }
+    function createLink(){ const u = prompt('Enter URL (https://...)'); if(u) cmd('createLink', u); }
     function unlink(){ cmd('unlink'); }
     function insertImage(){ const u = prompt('Image URL'); if(u) cmd('insertImage', u); }
 
     function insertTable(){
-      const rows = Math.max(1, parseInt(prompt('Rows (incl. header)?', '3'))||3);
-      const cols = Math.max(1, parseInt(prompt('Columns?', '3'))||3);
+      const rows = Math.max(1, parseInt(prompt('Rows (incl header)?','3'))||3);
+      const cols = Math.max(1, parseInt(prompt('Columns?','3'))||3);
       const withHeader = confirm('Use first row as header?');
       let html = '<table><tbody>';
       for(let r=0;r<rows;r++){
@@ -213,12 +212,12 @@
       sel.addRange(range);
     }
 
-    // ---------- Escape helpers ----------
-    function escapeHTML(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
-    function xmlEscape(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
-    function xmlAttr(s){return xmlEscape(String(s).replace(/"/g,'&quot;'));}
+    // ---- Escape helpers ----
+    function escapeHTML(s){ return (s||'').replace(/[&<>]/g, m=> ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
+    function xmlEscape(s){ return (s||'').replace(/[&<>]/g, m=> ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
+    function xmlAttr(s){ return xmlEscape(String(s).replace(/"/g,'&quot;')); }
 
-    // ---------- HTML → DITA (strict) ----------
+    // ---- HTML -> DITA conversion (strict lists: <li><p>..</p></li>) ----
     function htmlToDITA(rootEl){
       const titleText = (rootEl.querySelector('h1')?.textContent || 'Untitled').trim();
       const lines = [];
@@ -227,35 +226,29 @@
       lines.push(`<topic id="topic_${Date.now()}">`);
       lines.push(`<title>${xmlEscape(titleText)}</title>`);
       lines.push(`<body>`);
-
       const nodes = Array.from(rootEl.childNodes);
       let i = 0;
       if(nodes[0] && nodes[0].nodeType===1 && nodes[0].tagName.toLowerCase()==='h1') i=1;
-
       while(i<nodes.length){
         const n = nodes[i];
         lines.push(convertBlock(n));
         i++;
       }
-
       lines.push(`</body>`);
       lines.push(`</topic>`);
       return lines.join('\n');
     }
 
     function convertBlock(el){
-      if(el.nodeType===3){
-        const t = el.textContent.trim();
-        return t ? `<p>${xmlEscape(t)}</p>` : '';
-      }
+      if(!el) return '';
+      if(el.nodeType===3){ const t = el.textContent.trim(); return t?`<p>${xmlEscape(t)}</p>`:''; }
       if(el.nodeType!==1) return '';
-
       const tag = el.tagName.toLowerCase();
       switch(tag){
         case 'p': return `<p>${inlineToDITA(el)}</p>`;
         case 'pre': return `<codeblock>${xmlEscape(el.textContent)}</codeblock>`;
-        case 'ul': return listToDITA(el, 'ul');
-        case 'ol': return listToDITA(el, 'ol');
+        case 'ul': return listToDITA(el,'ul');
+        case 'ol': return listToDITA(el,'ol');
         case 'img': return `<image href="${xmlAttr(el.getAttribute('src')||'')}"/>`;
         case 'table': return tableToDITA(el);
         case 'h2':
@@ -263,43 +256,34 @@
           const title = el.textContent.trim();
           let xml = `<section>\n<title>${xmlEscape(title)}</title>\n`;
           let sib = el.nextSibling;
-          while(sib && !(sib.nodeType===1 && /^h[1-3]$/i.test(sib.tagName))){
-            xml += convertBlock(sib);
-            sib = sib.nextSibling;
-          }
+          while(sib && !(sib.nodeType===1 && /^h[1-3]$/i.test(sib.tagName))){ xml += convertBlock(sib); sib=sib.nextSibling; }
           xml += `</section>`;
           return xml;
         }
-        case 'div':
-        case 'span':
+        case 'div': case 'span':
           if(el.childNodes.length) return Array.from(el.childNodes).map(convertBlock).join('');
           return '';
         default:
           if(/^h[1-6]$/.test(tag)) return '';
-          return el.textContent.trim() ? `<p>${xmlEscape(el.textContent.trim())}</p>` : '';
+          return el.textContent.trim()? `<p>${xmlEscape(el.textContent.trim())}</p>` : '';
       }
     }
 
     function inlineToDITA(el){
-      let out = '';
+      let out='';
       for(const n of el.childNodes){
-        if(n.nodeType===3){ out += xmlEscape(n.textContent); continue; }
+        if(n.nodeType===3){ out+=xmlEscape(n.textContent); continue; }
         if(n.nodeType!==1) continue;
-        const t = n.tagName.toLowerCase();
+        const t=n.tagName.toLowerCase();
         switch(t){
-          case 'b':
-          case 'strong': out += `<b>${inlineToDITA(n)}</b>`; break;
-          case 'i':
-          case 'em': out += `<i>${inlineToDITA(n)}</i>`; break;
-          case 'u': out += `<u>${inlineToDITA(n)}</u>`; break;
-          case 'code': out += `<codeph>${xmlEscape(n.textContent)}</codeph>`; break;
-          case 'kbd': out += `<uicontrol>${xmlEscape(n.textContent)}</uicontrol>`; break;
-          case 'a': {
-            const href = n.getAttribute('href')||'';
-            out += `<xref href="${xmlAttr(href)}">${xmlEscape(n.textContent||href)}</xref>`; break;
-          }
-          case 'img': out += `<image href="${xmlAttr(n.getAttribute('src')||'')}"/>`; break;
-          default: out += xmlEscape(n.textContent);
+          case 'b': case 'strong': out+=`<b>${inlineToDITA(n)}</b>`; break;
+          case 'i': case 'em': out+=`<i>${inlineToDITA(n)}</i>`; break;
+          case 'u': out+=`<u>${inlineToDITA(n)}</u>`; break;
+          case 'code': out+=`<codeph>${xmlEscape(n.textContent)}</codeph>`; break;
+          case 'kbd': out+=`<uicontrol>${xmlEscape(n.textContent)}</uicontrol>`; break;
+          case 'a': { const href=n.getAttribute('href')||''; out+=`<xref href="${xmlAttr(href)}">${xmlEscape(n.textContent||href)}</xref>`; break; }
+          case 'img': out+=`<image href="${xmlAttr(n.getAttribute('src')||'')}"/>`; break;
+          default: out+=xmlEscape(n.textContent);
         }
       }
       return out;
@@ -307,7 +291,7 @@
 
     function listToDITA(listEl, kind){
       const items = Array.from(listEl.querySelectorAll(':scope > li')).map(li=>{
-        const inner = `<p>${inlineToDITA(li)}</p>`;
+        const inner=`<p>${inlineToDITA(li)}</p>`;
         return `<li>${inner}</li>`;
       }).join('');
       return `<${kind}>${items}</${kind}>`;
@@ -315,171 +299,130 @@
 
     function tableToDITA(tbl){
       const rows = Array.from(tbl.querySelectorAll(':scope > tbody > tr, :scope > tr'));
-      const headerRow = rows.find(r => r.querySelector('th'));
+      const headerRow = rows.find(r=>r.querySelector('th'));
       const colCount = Math.max(1, ...rows.map(r=>r.querySelectorAll('td,th').length));
-      let xml = `<table><tgroup cols="${colCount}">`;
-      if(headerRow){
-        xml += `<thead><row>`;
-        headerRow.querySelectorAll('th,td').forEach(c=>{ xml += `<entry>${inlineToDITA(c)}</entry>`; });
-        xml += `</row></thead>`;
-      }
-      xml += `<tbody>`;
-      rows.forEach(r=>{
-        if(r===headerRow) return;
-        xml += `<row>`;
-        r.querySelectorAll('td,th').forEach(c=>{ xml += `<entry>${inlineToDITA(c)}</entry>`; });
-        xml += `</row>`;
-      });
-      xml += `</tbody></tgroup></table>`;
+      let xml=`<table><tgroup cols="${colCount}">`;
+      if(headerRow){ xml+=`<thead><row>`; headerRow.querySelectorAll('th,td').forEach(c=>{ xml+=`<entry>${inlineToDITA(c)}</entry>`; }); xml+=`</row></thead>`;}
+      xml+=`<tbody>`;
+      rows.forEach(r=>{ if(r===headerRow) return; xml+=`<row>`; r.querySelectorAll('td,th').forEach(c=>{ xml+=`<entry>${inlineToDITA(c)}</entry>`;}); xml+=`</row>`; });
+      xml+=`</tbody></tgroup></table>`;
       return xml;
     }
 
-    // ---------- DITA → HTML ----------
+    // ---- DITA -> HTML (back-conversion) ----
     function ditaToHTML(xmlText){
       try{
-        const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+        const doc = new DOMParser().parseFromString(xmlText,'application/xml');
         if(doc.getElementsByTagName('parsererror').length) return `<p style="color:red">Invalid XML</p>`;
         const topic = doc.documentElement;
         if(!topic || topic.tagName!=='topic') return `<p style="color:red">Root must be &lt;topic&gt;</p>`;
-
-        let html = '';
+        let html='';
         const title = topic.getElementsByTagName('title')[0];
-        if(title) html += `<h1>${escapeHTML(title.textContent)}</h1>`;
-
+        if(title) html+=`<h1>${escapeHTML(title.textContent)}</h1>`;
         const body = topic.getElementsByTagName('body')[0] || topic;
-        html += renderBody(Array.from(body.childNodes), 2);
+        html += renderBody(Array.from(body.childNodes),2);
         return html;
       }catch(e){
         return `<p style="color:red">Parse error</p>`;
       }
     }
-
     function renderBody(nodes, level){
-      let out = '';
+      let out='';
       for(const n of nodes){
-        if(n.nodeType===3){ const t = n.textContent.trim(); if(t) out += `<p>${escapeHTML(t)}</p>`; continue; }
+        if(n.nodeType===3){ const t=n.textContent.trim(); if(t) out+=`<p>${escapeHTML(t)}</p>`; continue;}
         if(n.nodeType!==1) continue;
         switch(n.tagName){
-          case 'p': out += `<p>${renderInline(n)}</p>`; break;
+          case 'p': out+=`<p>${renderInline(n)}</p>`; break;
           case 'section': {
             const t = n.getElementsByTagName('title')[0];
-            if(t) out += `<h${Math.min(6,level)}>${escapeHTML(t.textContent)}</h${Math.min(6,level)}>`;
+            if(t) out+=`<h${Math.min(6,level)}>${escapeHTML(t.textContent)}</h${Math.min(6,level)}>`;
             const inner = Array.from(n.childNodes).filter(x=>!(x.nodeType===1 && x.tagName==='title'));
-            out += renderBody(inner, Math.min(6,level+1));
+            out+=renderBody(inner, Math.min(6,level+1));
             break;
           }
-          case 'ul': out += renderList(n, 'ul'); break;
-          case 'ol': out += renderList(n, 'ol'); break;
-          case 'codeblock': out += `<pre class="codeblock">${escapeHTML(n.textContent)}</pre>`; break;
-          case 'image': {
-            const href = n.getAttribute('href')||''; out += `<img src="${href}" alt="">`; break;
-          }
-          case 'table': out += renderTable(n); break;
-          default:
-            out += `<p>${escapeHTML(n.textContent)}</p>`;
+          case 'ul': out+=renderList(n,'ul'); break;
+          case 'ol': out+=renderList(n,'ol'); break;
+          case 'codeblock': out+=`<pre class="codeblock">${escapeHTML(n.textContent)}</pre>`; break;
+          case 'image': { const href=n.getAttribute('href')||''; out+=`<img src="${href}" alt="">`; break;}
+          case 'table': out+=renderTable(n); break;
+          default: out+=`<p>${escapeHTML(n.textContent)}</p>`;
         }
       }
       return out;
     }
-
     function renderList(listEl, kind){
       const lis = Array.from(listEl.getElementsByTagName('li'));
-      const items = lis.map(li=>{
-        const p = li.getElementsByTagName('p')[0];
-        const content = p ? renderInline(p) : renderInline(li);
-        return `<li>${content}</li>`;
-      }).join('');
+      const items = lis.map(li=>{ const p = li.getElementsByTagName('p')[0]; const content = p? renderInline(p): renderInline(li); return `<li>${content}</li>`; }).join('');
       return `<${kind}>${items}</${kind}>`;
     }
-
     function renderTable(tableEl){
       const tg = tableEl.getElementsByTagName('tgroup')[0];
       let theadRows=[], tbodyRows=[];
-      if(tg){
-        const thead = tg.getElementsByTagName('thead')[0];
-        const tbody = tg.getElementsByTagName('tbody')[0] || tg;
-        if(thead) theadRows = Array.from(thead.getElementsByTagName('row'));
-        if(tbody) tbodyRows = Array.from(tbody.getElementsByTagName('row'));
-      }
+      if(tg){ const thead=tg.getElementsByTagName('thead')[0]; const tbody=tg.getElementsByTagName('tbody')[0]||tg; if(thead) theadRows=Array.from(thead.getElementsByTagName('row')); if(tbody) tbodyRows=Array.from(tbody.getElementsByTagName('row')); }
       const rowToHTML = row => `<tr>${Array.from(row.children).filter(c=>c.tagName==='entry').map(c=>`<td>${renderInline(c)}</td>`).join('')}</tr>`;
-      const theadHTML = theadRows.length ? `<thead>${theadRows.map(rowToHTML).join('')}</thead>` : '';
+      const theadHTML = theadRows.length? `<thead>${theadRows.map(rowToHTML).join('')}</thead>` : '';
       const tbodyHTML = `<tbody>${tbodyRows.map(rowToHTML).join('')}</tbody>`;
       return `<table>${theadHTML}${tbodyHTML}</table>`;
     }
-
     function renderInline(el){
-      let out = '';
+      let out='';
       for(const node of el.childNodes){
-        if(node.nodeType===3){ out += escapeHTML(node.textContent); continue; }
+        if(node.nodeType===3){ out+=escapeHTML(node.textContent); continue; }
         if(node.nodeType!==1) continue;
         switch(node.tagName){
-          case 'b': out += `<b>${renderInline(node)}</b>`; break;
-          case 'i': out += `<i>${renderInline(node)}</i>`; break;
-          case 'u': out += `<u>${renderInline(node)}</u>`; break;
-          case 'codeph': out += `<code>${escapeHTML(node.textContent)}</code>`; break;
-          case 'xref': {
-            const href = node.getAttribute('href')||''; out += `<a href="${href}">${escapeHTML(node.textContent||href)}</a>`; break;
-          }
-          default: out += escapeHTML(node.textContent);
+          case 'b': out+=`<b>${renderInline(node)}</b>`; break;
+          case 'i': out+=`<i>${renderInline(node)}</i>`; break;
+          case 'u': out+=`<u>${renderInline(node)}</u>`; break;
+          case 'codeph': out+=`<code>${escapeHTML(node.textContent)}</code>`; break;
+          case 'xref': { const href=node.getAttribute('href')||''; out+=`<a href="${href}">${escapeHTML(node.textContent||href)}</a>`; break; }
+          default: out+=escapeHTML(node.textContent);
         }
       }
       return out;
     }
 
-    // ---------- Sync wiring ----------
-    function onXmlInput(){
-      const xml = xmlBox.value.trim();
-      if(!xml){ rte.innerHTML = '<h1>Untitled</h1>'; return; }
-      rte.innerHTML = ditaToHTML(xml);
-    }
-    function onRteInput(){
-      xmlBox.value = htmlToDITA(rte);
-    }
+    // ---- Sync wiring ----
+    function onXmlInput(){ const xml = xmlBox.value.trim(); if(!xml){ rte.innerHTML = '<h1>Untitled</h1>'; return;} rte.innerHTML = ditaToHTML(xml); }
+    function onRteInput(){ xmlBox.value = htmlToDITA(rte); }
     function syncNow(){ onRteInput(); }
 
     xmlBox.addEventListener('input', onXmlInput);
     rte.addEventListener('input', onRteInput);
 
-    // Enable/disable editing
+    // ---- Enable/Disable editing ----
     let editable = true;
-    function toggleEdit(){
-      editable = !editable;
-      rte.contentEditable = String(editable);
-      rte.classList.toggle('edit', editable);
+    toggleBtn.addEventListener('click', ()=>{
+      editable = !editable; rte.contentEditable = String(editable); rte.classList.toggle('edit', editable);
       toggleBtn.textContent = editable ? 'Disable Editing' : 'Enable Editing';
-    }
-    toggleBtn.addEventListener('click', toggleEdit);
+    });
 
-    // ---------- Filename helper (uses DITA <title> if present, else RTE H1/H2/H3) ----------
+    // ---- Filename helpers (use DITA title first, else RTE heading) ----
     function getDocTitle(){
-      // Try from XML box
+      // Try DITA title from xmlBox
       try{
-        const text = xmlBox.value.trim();
-        if(text){
-          const doc = new DOMParser().parseFromString(text, 'application/xml');
+        const xml = xmlBox.value.trim();
+        if(xml){
+          const doc = new DOMParser().parseFromString(xml,'application/xml');
           if(!doc.getElementsByTagName('parsererror').length){
             const t = doc.getElementsByTagName('title')[0];
             if(t && t.textContent.trim()) return t.textContent.trim();
           }
         }
       }catch(e){}
-      // Fallback to rich editor heading
+      // else RTE
       const h = rte.querySelector('h1,h2,h3');
       if(h && h.textContent.trim()) return h.textContent.trim();
+      // else filename input
+      if(filenameInput && filenameInput.value.trim()) return filenameInput.value.trim();
       return 'output';
     }
-    function fileSafe(base){
-      return base.replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'output';
-    }
+    function fileSafe(name){ return name.replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'output'; }
 
-    // ---------- Downloads (title-based names) ----------
+    // ---- Downloads ----
     function downloadHTML(){
       const name = fileSafe(getDocTitle()) + '.html';
-      const blob = new Blob([rte.innerHTML],{type:'text/html'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
+      const blob = new Blob([rte.innerHTML], { type:'text/html' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     }
     function downloadPDF(){
       if(!rte.innerHTML.trim()){ alert('Nothing to export'); return; }
@@ -492,52 +435,65 @@
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
       }).from(rte).save();
     }
-    function downloadDITA(){
+    function downloadEditableHTML(){
+      const name = fileSafe(getDocTitle()) + '-editable.html';
+      const html = `<!doctype html><meta charset="utf-8"><body contenteditable="true">${rte.innerHTML}</body>`;
+      const blob = new Blob([html], { type:'text/html' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    }
+    function downloadXml(){
       const xml = xmlBox.value.trim();
       if(!xml){ alert('No DITA XML to download'); return; }
       const name = fileSafe(getDocTitle()) + '.dita';
       const blob = new Blob([xml], { type: 'application/xml' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     }
 
-    // ---------- Gemini generator ----------
+    // ---- Gemini generator with loading indicators ----
     async function generateWithGemini(){
       const prompt = promptInput.value.trim();
       if(!prompt){ alert('Enter a prompt'); return; }
+
+      // Show loading overlays
+      xmlLoading.classList.remove('hidden');
+      rteLoading.classList.remove('hidden');
+
       try{
-        const res = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+GEMINI_API_KEY,
-          {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              contents:[{role:'user',parts:[{text:
-                `Generate a valid DITA topic with <!DOCTYPE topic ...>. Include <topic><title><body>. Use <p>, <ul>/<ol> with <li><p>…</p></li>, <codeblock>, and a simple <table><tgroup><tbody> form. Topic about: ${prompt}`
-              }]}]
-            })
-          }
-        );
+        // POST to Gemini generative language endpoint with provided API key
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({
+            contents:[{ role:'user', parts:[{ text:
+              `Generate a valid DITA topic with <!DOCTYPE topic ...>. Include <topic><title><body>. Use <p>, <ul>/<ol> with <li><p>…</p></li>, <codeblock>, and a simple <table><tgroup><tbody> form. Topic about: ${prompt}`
+            }]}]
+          })
+        });
+
         const data = await res.json();
         const xml = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if(!xml){ alert('No output from Gemini'); return; }
-        xmlBox.value = xml.trim();
-        onXmlInput();
+
+        if(!xml){
+          alert('No output from Gemini');
+        } else {
+          // Put generated XML into XML editor and render to RTE
+          xmlBox.value = xml.trim();
+          onXmlInput();
+        }
       }catch(e){
         console.error(e);
-        alert('Gemini error');
+        alert('Gemini error: ' + (e.message || e));
+      }finally{
+        // Hide loading overlays
+        xmlLoading.classList.add('hidden');
+        rteLoading.classList.add('hidden');
       }
     }
     genBtn.addEventListener('click', generateWithGemini);
     promptInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); generateWithGemini(); }});
 
-    // ---------- Init ----------
-    window.addEventListener('load', ()=>{
-      rte.classList.add('edit');
-      onRteInput(); // populate xmlBox from initial rich content
-    });
+    // ---- Init: populate xmlBox from initial rte ----
+    window.addEventListener('load', ()=>{ rte.classList.add('edit'); onRteInput(); });
   </script>
 </body>
 </html>
