@@ -15,7 +15,7 @@
     h1,h2,h3{margin:.5rem 0}
     .row{display:flex;gap:18px;align-items:stretch;padding:0 20px 20px}
 
-    /* --- Shared buttons/inputs --- */
+    /* Shared controls */
     .btn{background:var(--brand);color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer}
     .btn.secondary{background:#2d7ef7}
     .btn.gray{background:#888}
@@ -23,17 +23,17 @@
     .muted{color:var(--muted);font-size:12px}
     input[type=text]{padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:280px}
 
-    /* --- XML pane (left) --- */
+    /* Left: XML pane */
     .pane{width:48%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
     .pane-header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .pane-body{display:flex;flex:1 1 auto;min-height:0}
     .pane-body textarea{
       width:100%; padding:12px; border:0; outline:none; resize:none;
       font-family:ui-monospace,SFMono-Regular,Menlo,monospace; line-height:1.45;
-      height:600px; /* normal view */
+      height:600px;
     }
 
-    /* --- Rich editor panel (right) --- */
+    /* Right: Rich editor */
     .panel{width:52%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
     .panel-header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .toolbar{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:#fafafa}
@@ -45,12 +45,12 @@
     #rte.edit{outline:2px dashed #f4c430;outline-offset:6px}
     .controls{padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#fafafa}
 
-    /* --- Content styles --- */
+    /* Content styles */
     pre.codeblock{background:var(--code);color:var(--code-ink);padding:10px;border-radius:6px;white-space:pre-wrap}
     table{border-collapse:collapse;width:100%;margin:10px 0}
     th,td{border:1px solid #888;padding:8px 10px;text-align:left}
 
-    /* --- FULLSCREEN MODE --- */
+    /* Fullscreen */
     .fullscreen{
       position:fixed !important;
       inset:0 !important;
@@ -74,7 +74,7 @@
   </header>
 
   <div class="row">
-    <!-- Left: XML editor wrapped in a pane with header -->
+    <!-- Left: XML editor -->
     <div class="pane" id="xmlPane">
       <div class="pane-header">
         <span>XML Editor</span>
@@ -126,7 +126,6 @@
         <button id="toggleBtn" class="btn">Disable Editing</button>
         <button class="btn gray" onclick="downloadHTML()">Download Rich HTML</button>
         <button class="btn gray" onclick="downloadPDF()">Download Rich PDF</button>
-        <!-- NEW: DITA XML download button -->
         <button class="btn gray" onclick="downloadDITA()">Download DITA XML</button>
       </div>
     </div>
@@ -136,7 +135,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 
   <script>
-    // ⚠️ You asked to include the API key as-is.
+    /* You provided this key; keeping it as-is per your request. */
     const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg";
 
     const xmlBox = document.getElementById('xmlBox');
@@ -153,7 +152,7 @@
     // Ensure Enter inserts <p>
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch(e){}
 
-    // ---------- Full Screen helpers ----------
+    // ---------- Full Screen ----------
     function toggleFullscreen(container, btn){
       container.classList.toggle('fullscreen');
       const isFs = container.classList.contains('fullscreen');
@@ -216,10 +215,10 @@
 
     // ---------- Escape helpers ----------
     function escapeHTML(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
-    function xmlEscape(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&gt;"}[m]));}
+    function xmlEscape(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
     function xmlAttr(s){return xmlEscape(String(s).replace(/"/g,'&quot;'));}
 
-    // ---------- HTML → DITA (strict, with <li><p> wrapper) ----------
+    // ---------- HTML → DITA (strict) ----------
     function htmlToDITA(rootEl){
       const titleText = (rootEl.querySelector('h1')?.textContent || 'Untitled').trim();
       const lines = [];
@@ -335,7 +334,7 @@
       return xml;
     }
 
-    // ---------- DITA → HTML (back-conversion) ----------
+    // ---------- DITA → HTML ----------
     function ditaToHTML(xmlText){
       try{
         const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
@@ -451,32 +450,56 @@
     }
     toggleBtn.addEventListener('click', toggleEdit);
 
-    // ---------- Downloads ----------
+    // ---------- Filename helper (uses DITA <title> if present, else RTE H1/H2/H3) ----------
+    function getDocTitle(){
+      // Try from XML box
+      try{
+        const text = xmlBox.value.trim();
+        if(text){
+          const doc = new DOMParser().parseFromString(text, 'application/xml');
+          if(!doc.getElementsByTagName('parsererror').length){
+            const t = doc.getElementsByTagName('title')[0];
+            if(t && t.textContent.trim()) return t.textContent.trim();
+          }
+        }
+      }catch(e){}
+      // Fallback to rich editor heading
+      const h = rte.querySelector('h1,h2,h3');
+      if(h && h.textContent.trim()) return h.textContent.trim();
+      return 'output';
+    }
+    function fileSafe(base){
+      return base.replace(/[^a-z0-9_\-]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase() || 'output';
+    }
+
+    // ---------- Downloads (title-based names) ----------
     function downloadHTML(){
+      const name = fileSafe(getDocTitle()) + '.html';
       const blob = new Blob([rte.innerHTML],{type:'text/html'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'rich.html';
+      a.download = name;
       a.click();
     }
     function downloadPDF(){
       if(!rte.innerHTML.trim()){ alert('Nothing to export'); return; }
+      const name = fileSafe(getDocTitle()) + '.pdf';
       html2pdf().set({
         margin:[15,15,15,15],
-        filename:'rich.pdf',
+        filename:name,
         image:{type:'jpeg',quality:0.98},
         html2canvas:{scale:2,useCORS:true},
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
       }).from(rte).save();
     }
-    // NEW: download current DITA from the XML editor
     function downloadDITA(){
       const xml = xmlBox.value.trim();
       if(!xml){ alert('No DITA XML to download'); return; }
+      const name = fileSafe(getDocTitle()) + '.dita';
       const blob = new Blob([xml], { type: 'application/xml' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'topic.dita';
+      a.download = name;
       a.click();
     }
 
