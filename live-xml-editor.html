@@ -14,7 +14,26 @@
     header{padding:16px 20px}
     h1,h2,h3{margin:.5rem 0}
     .row{display:flex;gap:18px;align-items:stretch;padding:0 20px 20px}
-    textarea{width:48%;height:600px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.45}
+
+    /* --- Shared buttons/inputs --- */
+    .btn{background:var(--brand);color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer}
+    .btn.secondary{background:#2d7ef7}
+    .btn.gray{background:#888}
+    .btn:hover{opacity:.95}
+    .muted{color:var(--muted);font-size:12px}
+    input[type=text]{padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:280px}
+
+    /* --- XML pane (left) --- */
+    .pane{width:48%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
+    .pane-header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pane-body{display:flex;flex:1 1 auto;min-height:0}
+    .pane-body textarea{
+      width:100%; padding:12px; border:0; outline:none; resize:none;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace; line-height:1.45;
+      height:600px; /* normal view */
+    }
+
+    /* --- Rich editor panel (right) --- */
     .panel{width:52%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
     .panel-header{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .toolbar{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:#fafafa}
@@ -25,15 +44,27 @@
     #rte{padding:16px;flex:1 1 auto;overflow:auto;outline:none;min-height:320px}
     #rte.edit{outline:2px dashed #f4c430;outline-offset:6px}
     .controls{padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#fafafa}
-    .btn{background:var(--brand);color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer}
-    .btn.secondary{background:#2d7ef7}
-    .btn.gray{background:#888}
-    .btn:hover{opacity:.95}
+
+    /* --- Content styles --- */
     pre.codeblock{background:var(--code);color:var(--code-ink);padding:10px;border-radius:6px;white-space:pre-wrap}
     table{border-collapse:collapse;width:100%;margin:10px 0}
     th,td{border:1px solid #888;padding:8px 10px;text-align:left}
-    .muted{color:var(--muted);font-size:12px}
-    input[type=text]{padding:8px 10px;border:1px solid var(--border);border-radius:6px;min-width:280px}
+
+    /* --- FULLSCREEN MODE --- */
+    /* Apply .fullscreen to .pane (XML) or .panel (Rich) */
+    .fullscreen{
+      position:fixed !important;
+      inset:0 !important;
+      z-index:9999 !important;
+      width:100% !important;
+      height:100% !important;
+      margin:0 !important;
+      border-radius:0 !important;
+    }
+    .fullscreen .pane-body textarea{height:auto !important; flex:1 1 auto}
+    .fullscreen #rte{min-height:0}
+    .fullscreen .controls{position:sticky; bottom:0}
+    .fs-spacer{flex:1 1 auto} /* keeps headers tidy */
   </style>
 </head>
 <body>
@@ -43,15 +74,26 @@
   </header>
 
   <div class="row">
-    <!-- Left: XML editor -->
-    <textarea id="xmlBox" placeholder="Paste or edit a DITA topic here…&#10;It will render on the right."></textarea>
+    <!-- Left: XML editor wrapped in a pane with header -->
+    <div class="pane" id="xmlPane">
+      <div class="pane-header">
+        <span>XML Editor</span>
+        <div class="fs-spacer"></div>
+        <button class="btn gray" id="xmlFsBtn" title="Toggle Full Screen">⛶ Full Screen</button>
+      </div>
+      <div class="pane-body">
+        <textarea id="xmlBox" placeholder="Paste or edit a DITA topic here…&#10;It will render on the right."></textarea>
+      </div>
+    </div>
 
     <!-- Right: Rich editor -->
-    <div class="panel">
+    <div class="panel" id="rtePane">
       <div class="panel-header">
         <span>Rich Editor</span>
         <input id="prompt" type="text" placeholder="Prompt for Gemini to generate DITA topic…" />
         <button class="btn secondary" id="genBtn">Generate XML (Gemini)</button>
+        <div class="fs-spacer"></div>
+        <button class="btn gray" id="rteFsBtn" title="Toggle Full Screen">⛶ Full Screen</button>
       </div>
 
       <div class="toolbar" id="toolbar">
@@ -101,8 +143,34 @@
     const genBtn = document.getElementById('genBtn');
     const promptInput = document.getElementById('prompt');
 
+    const xmlPane = document.getElementById('xmlPane');
+    const rtePane = document.getElementById('rtePane');
+    const xmlFsBtn = document.getElementById('xmlFsBtn');
+    const rteFsBtn = document.getElementById('rteFsBtn');
+
     // Ensure Enter inserts <p>
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch(e){}
+
+    // ---------- Full Screen helpers ----------
+    function toggleFullscreen(container, btn){
+      container.classList.toggle('fullscreen');
+      const isFs = container.classList.contains('fullscreen');
+      if(btn){
+        btn.textContent = isFs ? '🡼 Exit Full Screen' : '⛶ Full Screen';
+        btn.title = isFs ? 'Exit Full Screen' : 'Toggle Full Screen';
+      }
+      // Focus sensible target
+      if(container === xmlPane) xmlBox.focus(); else rte.focus();
+    }
+    xmlFsBtn.addEventListener('click', ()=>toggleFullscreen(xmlPane, xmlFsBtn));
+    rteFsBtn.addEventListener('click', ()=>toggleFullscreen(rtePane, rteFsBtn));
+    // ESC exits any fullscreen editor
+    window.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){
+        if(xmlPane.classList.contains('fullscreen')) toggleFullscreen(xmlPane, xmlFsBtn);
+        if(rtePane.classList.contains('fullscreen')) toggleFullscreen(rtePane, rteFsBtn);
+      }
+    });
 
     // ---------- Toolbar helpers ----------
     function cmd(name, value=null){ document.execCommand(name, false, value); rte.focus(); onRteInput(); }
@@ -311,7 +379,6 @@
           }
           case 'table': out += renderTable(n); break;
           default:
-            // unknown -> paragraph fallback
             out += `<p>${escapeHTML(n.textContent)}</p>`;
         }
       }
@@ -321,7 +388,6 @@
     function renderList(listEl, kind){
       const lis = Array.from(listEl.getElementsByTagName('li'));
       const items = lis.map(li=>{
-        // If <li><p>…</p></li> use inner <p> inline; else use all inline
         const p = li.getElementsByTagName('p')[0];
         const content = p ? renderInline(p) : renderInline(li);
         return `<li>${content}</li>`;
@@ -437,7 +503,6 @@
     promptInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); generateWithGemini(); }});
 
     // ---------- Init ----------
-    // Start with RTE → XML so left shows a valid topic shell
     window.addEventListener('load', ()=>{
       rte.classList.add('edit');
       onRteInput(); // populate xmlBox from initial rich content
