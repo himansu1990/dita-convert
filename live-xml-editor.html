@@ -51,7 +51,6 @@
     th,td{border:1px solid #888;padding:8px 10px;text-align:left}
 
     /* --- FULLSCREEN MODE --- */
-    /* Apply .fullscreen to .pane (XML) or .panel (Rich) */
     .fullscreen{
       position:fixed !important;
       inset:0 !important;
@@ -60,11 +59,12 @@
       height:100% !important;
       margin:0 !important;
       border-radius:0 !important;
+      background:var(--card);
     }
     .fullscreen .pane-body textarea{height:auto !important; flex:1 1 auto}
     .fullscreen #rte{min-height:0}
     .fullscreen .controls{position:sticky; bottom:0}
-    .fs-spacer{flex:1 1 auto} /* keeps headers tidy */
+    .fs-spacer{flex:1 1 auto}
   </style>
 </head>
 <body>
@@ -126,6 +126,8 @@
         <button id="toggleBtn" class="btn">Disable Editing</button>
         <button class="btn gray" onclick="downloadHTML()">Download Rich HTML</button>
         <button class="btn gray" onclick="downloadPDF()">Download Rich PDF</button>
+        <!-- NEW: DITA XML download button -->
+        <button class="btn gray" onclick="downloadDITA()">Download DITA XML</button>
       </div>
     </div>
   </div>
@@ -134,7 +136,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 
   <script>
-    // ⚠️ Included per your request. Do NOT ship in production with a public key.
+    // ⚠️ You asked to include the API key as-is.
     const GEMINI_API_KEY = "AIzaSyCMdJUIbMQUrkQWcKkgBn4G7fCFzpNZMJg";
 
     const xmlBox = document.getElementById('xmlBox');
@@ -159,12 +161,10 @@
         btn.textContent = isFs ? '🡼 Exit Full Screen' : '⛶ Full Screen';
         btn.title = isFs ? 'Exit Full Screen' : 'Toggle Full Screen';
       }
-      // Focus sensible target
       if(container === xmlPane) xmlBox.focus(); else rte.focus();
     }
     xmlFsBtn.addEventListener('click', ()=>toggleFullscreen(xmlPane, xmlFsBtn));
     rteFsBtn.addEventListener('click', ()=>toggleFullscreen(rtePane, rteFsBtn));
-    // ESC exits any fullscreen editor
     window.addEventListener('keydown', (e)=>{
       if(e.key === 'Escape'){
         if(xmlPane.classList.contains('fullscreen')) toggleFullscreen(xmlPane, xmlFsBtn);
@@ -191,7 +191,7 @@
         }
         html += '</tr>';
       }
-      html += '</tbody></table><p><br></p>'; // trailing paragraph to escape table
+      html += '</tbody></table><p><br></p>';
       document.execCommand('insertHTML', false, html);
       placeCaretAtEnd(rte);
       onRteInput();
@@ -216,7 +216,7 @@
 
     // ---------- Escape helpers ----------
     function escapeHTML(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
-    function xmlEscape(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));}
+    function xmlEscape(s){return (s||'').replace(/[&<>]/g,m=>({"&":"&amp;","<":"&gt;"}[m]));}
     function xmlAttr(s){return xmlEscape(String(s).replace(/"/g,'&quot;'));}
 
     // ---------- HTML → DITA (strict, with <li><p> wrapper) ----------
@@ -231,7 +231,6 @@
 
       const nodes = Array.from(rootEl.childNodes);
       let i = 0;
-      // skip the first h1 if present
       if(nodes[0] && nodes[0].nodeType===1 && nodes[0].tagName.toLowerCase()==='h1') i=1;
 
       while(i<nodes.length){
@@ -263,7 +262,6 @@
         case 'h2':
         case 'h3': {
           const title = el.textContent.trim();
-          // collect until next heading
           let xml = `<section>\n<title>${xmlEscape(title)}</title>\n`;
           let sib = el.nextSibling;
           while(sib && !(sib.nodeType===1 && /^h[1-3]$/i.test(sib.tagName))){
@@ -278,7 +276,7 @@
           if(el.childNodes.length) return Array.from(el.childNodes).map(convertBlock).join('');
           return '';
         default:
-          if(/^h[1-6]$/.test(tag)) return ''; // h1 already used as title
+          if(/^h[1-6]$/.test(tag)) return '';
           return el.textContent.trim() ? `<p>${xmlEscape(el.textContent.trim())}</p>` : '';
       }
     }
@@ -308,9 +306,9 @@
       return out;
     }
 
-    function listToDITA(listEl, kind){ // kind: 'ul' or 'ol'
+    function listToDITA(listEl, kind){
       const items = Array.from(listEl.querySelectorAll(':scope > li')).map(li=>{
-        const inner = `<p>${inlineToDITA(li)}</p>`; // auto-wrap
+        const inner = `<p>${inlineToDITA(li)}</p>`;
         return `<li>${inner}</li>`;
       }).join('');
       return `<${kind}>${items}</${kind}>`;
@@ -337,7 +335,7 @@
       return xml;
     }
 
-    // ---------- DITA → HTML (back-conversion, list-aware) ----------
+    // ---------- DITA → HTML (back-conversion) ----------
     function ditaToHTML(xmlText){
       try{
         const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
@@ -470,6 +468,16 @@
         html2canvas:{scale:2,useCORS:true},
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
       }).from(rte).save();
+    }
+    // NEW: download current DITA from the XML editor
+    function downloadDITA(){
+      const xml = xmlBox.value.trim();
+      if(!xml){ alert('No DITA XML to download'); return; }
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'topic.dita';
+      a.click();
     }
 
     // ---------- Gemini generator ----------
